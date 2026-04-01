@@ -35,6 +35,13 @@ class AuthorType(StrEnum):
     SYSTEM = "system"
 
 
+class CustomerTier(StrEnum):
+    FREE = "free"
+    BASIC = "basic"
+    PREMIUM = "premium"
+    ENTERPRISE = "enterprise"
+
+
 class SimpliBase(BaseModel):
     """Base model with shared configuration for all Simpli models."""
 
@@ -52,18 +59,18 @@ class _TimestampBase(SimpliBase):
 class Customer(_TimestampBase):
     """A customer who submits support requests."""
 
-    id: str
-    name: str
+    id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
     email: EmailStr | None = None
-    tier: str | None = None
+    tier: CustomerTier | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
 
 
 class Agent(SimpliBase):
     """A support agent who handles tickets."""
 
-    id: str
-    name: str
+    id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
     email: EmailStr
     teams: list[str] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
@@ -73,23 +80,23 @@ class Agent(SimpliBase):
 class Message(_TimestampBase):
     """A single message in a conversation."""
 
-    id: str
+    id: str = Field(min_length=1)
     author_type: AuthorType
-    author_id: str
-    body: str
+    author_id: str = Field(min_length=1)
+    body: str = Field(min_length=1)
     channel: Channel = Channel.EMAIL
 
 
 class Ticket(_TimestampBase):
     """A support ticket."""
 
-    id: str
-    subject: str
-    description: str
+    id: str = Field(min_length=1)
+    subject: str = Field(min_length=1)
+    description: str = Field(min_length=1)
     status: TicketStatus = TicketStatus.NEW
     priority: Priority = Priority.MEDIUM
     channel: Channel = Channel.EMAIL
-    customer_id: str
+    customer_id: str = Field(min_length=1)
     assignee_id: str | None = None
     tags: list[str] = Field(default_factory=list)
     metadata: dict[str, str] = Field(default_factory=dict)
@@ -101,6 +108,6 @@ class Ticket(_TimestampBase):
 class Conversation(_TimestampBase):
     """A conversation thread associated with a ticket."""
 
-    id: str
-    ticket_id: str
+    id: str = Field(min_length=1)
+    ticket_id: str = Field(min_length=1)
     messages: list[Message] = Field(default_factory=list)

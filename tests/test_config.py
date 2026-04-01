@@ -47,7 +47,7 @@ class TestLoadConfig:
         assert config.simpli_log_level == "INFO"
 
     def test_extra_keys_allowed(self) -> None:
-        config = SimpliConfig(simpli_custom_key="value")  # type: ignore[call-arg]
+        config = SimpliConfig.model_validate({"simpli_custom_key": "value"})
         assert config.model_extra is not None
         assert config.model_extra["simpli_custom_key"] == "value"
 
@@ -57,3 +57,14 @@ class TestLoadConfig:
         monkeypatch.setenv("OTHER_VAR", "should_not_appear")
         config = load_config()
         assert "other_var" not in (config.model_extra or {})
+
+    def test_yaml_non_dict_ignored(self, tmp_path: Path) -> None:
+        yaml_file = tmp_path / "list.yaml"
+        yaml_file.write_text("- item1\n- item2\n")
+        config = load_config(yaml_file=yaml_file)
+        assert config.simpli_env == "development"
+
+    def test_bool_coercion_from_string(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("SIMPLI_DEBUG", "true")
+        config = load_config()
+        assert config.simpli_debug is True
