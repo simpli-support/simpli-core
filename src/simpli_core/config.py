@@ -27,7 +27,7 @@ def load_config(
     Priority (highest to lowest): env vars > .env file > YAML file.
 
     Raises:
-        ValueError: If the YAML file exists but cannot be parsed.
+        ValueError: If the YAML file exists but cannot be parsed or read.
     """
     config: dict[str, str] = {}
 
@@ -39,6 +39,8 @@ def load_config(
                     config.update(yaml_config)
         except yaml.YAMLError as exc:
             raise ValueError(f"Failed to parse YAML config {yaml_file}: {exc}") from exc
+        except OSError as exc:
+            raise ValueError(f"Failed to read config file {yaml_file}: {exc}") from exc
 
     if env_file:
         load_dotenv(env_file, override=True)
@@ -49,4 +51,4 @@ def load_config(
         if key.startswith("SIMPLI_"):
             config[key.lower()] = value
 
-    return SimpliConfig(**config)
+    return SimpliConfig.model_validate(config)
