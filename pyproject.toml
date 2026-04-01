@@ -8,9 +8,7 @@ version = "0.1.0"
 description = "Shared SDK with common models, auth helpers, and integration utilities for the Simpli Support product family"
 requires-python = ">=3.11"
 dependencies = [
-    "pydantic>=2.10",
-    "httpx>=0.28",
-    "structlog>=24.4",
+    "pydantic[email]>=2.10",
     "python-dotenv>=1.0",
     "pyyaml>=6.0",
     "typer>=0.15",
@@ -21,6 +19,7 @@ redis = ["redis>=5.2"]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
     "ruff>=0.8",
     "mypy>=1.13",
     "types-pyyaml>=6.0",
