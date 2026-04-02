@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "simpli-core"
-version = "0.1.0"
+version = "0.2.0"
 description = "Shared SDK with common models, auth helpers, and integration utilities for the Simpli Support product family"
 requires-python = ">=3.11"
 license = "MIT"
@@ -20,8 +20,10 @@ classifiers = [
 ]
 dependencies = [
     "pydantic[email]>=2.10",
+    "pydantic-settings>=2.6",
     "python-dotenv>=1.0",
     "pyyaml>=6.0",
+    "structlog>=24.4",
     "typer>=0.15",
 ]
 
