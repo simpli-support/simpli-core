@@ -18,3 +18,4 @@ class SimpliSettings(BaseSettings):
     app_port: int = Field(default=8000)
     app_log_level: str = Field(default="info")
     app_debug: bool = Field(default=False)
+    cost_tracking_enabled: bool = Field(default=False)
