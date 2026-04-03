@@ -1,8 +1,14 @@
 """Simpli Core — shared SDK for the Simpli Support product family."""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 from simpli_core.config import SimpliConfig, load_config
+from simpli_core.fastapi import (
+    ChatMessage,
+    add_request_id_middleware,
+    create_app,
+    create_ops_router,
+)
 from simpli_core.logging import setup_logging
 from simpli_core.models import (
     Agent,
@@ -26,6 +32,7 @@ from simpli_core.usage import (
 )
 
 __all__ = [
+    "ChatMessage",
     "DEFAULT_PRICING",
     "Agent",
     "AuthorType",
@@ -43,6 +50,9 @@ __all__ = [
     "Ticket",
     "TicketStatus",
     "TokenUsage",
+    "add_request_id_middleware",
+    "create_app",
+    "create_ops_router",
     "load_config",
     "setup_logging",
 ]
