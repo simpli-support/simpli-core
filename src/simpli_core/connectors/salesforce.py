@@ -5,16 +5,23 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import httpx
+
+from simpli_core.connectors.registry import register
+
 logger = logging.getLogger(__name__)
 
 
 class SalesforceConnector:
     """Connect to Salesforce via OAuth2 Client Credentials and query data.
 
-    Requires the ``simple-salesforce`` package. Install with::
+    Requires the ``simple-salesforce`` package for SOQL queries.
+    Install with::
 
         pip install simpli-core[salesforce]
     """
+
+    platform: str = "salesforce"
 
     def __init__(
         self,
@@ -34,11 +41,9 @@ class SalesforceConnector:
         # Strip trailing slash
         self.instance_url = instance_url.rstrip("/")
 
-        # Authenticate via OAuth2 Client Credentials Flow
-        import requests
-
+        # Authenticate via OAuth2 Client Credentials Flow (httpx)
         token_url = f"{self.instance_url}/services/oauth2/token"
-        resp = requests.post(
+        resp = httpx.post(
             token_url,
             data={
                 "grant_type": "client_credentials",
@@ -68,6 +73,14 @@ class SalesforceConnector:
         for rec in records:
             rec.pop("attributes", None)
         return records
+
+    def get_tickets(
+        self,
+        where: str = "",
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Fetch Case records (alias for get_cases)."""
+        return self.get_cases(where=where, limit=limit)
 
     def get_cases(
         self,
@@ -101,6 +114,14 @@ class SalesforceConnector:
         soql += f" LIMIT {limit}"
         return self.query(soql)
 
+    def get_customers(
+        self,
+        where: str = "",
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Fetch Contact records (alias for get_contacts)."""
+        return self.get_contacts(where=where, limit=limit)
+
     def get_case_comments(
         self,
         case_id: str,
@@ -113,6 +134,13 @@ class SalesforceConnector:
             "ORDER BY CreatedDate ASC"
         )
         return self.query(soql)
+
+    def get_messages(
+        self,
+        ticket_id: str,
+    ) -> list[dict[str, Any]]:
+        """Fetch messages for a case (alias for get_case_comments)."""
+        return self.get_case_comments(ticket_id)
 
     def get_feed_items(
         self,
@@ -142,3 +170,18 @@ class SalesforceConnector:
             soql += f" AND {where}"
         soql += f" LIMIT {limit}"
         return self.query(soql)
+
+    def get_articles(
+        self,
+        where: str = "",
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Fetch KB articles (alias for get_kb_articles)."""
+        return self.get_kb_articles(where=where, limit=limit)
+
+    def close(self) -> None:
+        """No-op — Salesforce uses simple-salesforce session."""
+
+
+# Register with the connector registry
+register("salesforce", SalesforceConnector)  # type: ignore[arg-type]

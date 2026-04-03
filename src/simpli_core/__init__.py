@@ -4,11 +4,15 @@ __version__ = "0.5.0"
 
 from simpli_core.config import SimpliConfig, load_config
 from simpli_core.connectors import (
+    BaseConnector,
+    ConnectorError,
     FieldMapping,
     FileConnector,
     SalesforceConnector,
     SalesforceSettings,
     apply_mappings,
+    get_connector,
+    list_platforms,
 )
 from simpli_core.fastapi import (
     ChatMessage,
@@ -39,7 +43,9 @@ from simpli_core.usage import (
 )
 
 __all__ = [
+    "BaseConnector",
     "ChatMessage",
+    "ConnectorError",
     "DEFAULT_PRICING",
     "Agent",
     "AuthorType",
@@ -65,6 +71,8 @@ __all__ = [
     "apply_mappings",
     "create_app",
     "create_ops_router",
+    "get_connector",
+    "list_platforms",
     "load_config",
     "setup_logging",
 ]

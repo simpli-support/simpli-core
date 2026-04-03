@@ -38,6 +38,62 @@ def _resolve_enum(enum_path: str, value: str) -> str:
     return value
 
 
+def _get_nested(record: dict[str, Any], key: str, default: Any = None) -> Any:
+    """Get a value from a nested dict using dot notation.
+
+    ``_get_nested({"via": {"channel": "email"}}, "via.channel")`` → ``"email"``
+    Falls back to flat key lookup first for backwards compatibility.
+    """
+    # Try flat key first (handles keys that literally contain dots)
+    if key in record:
+        return record[key]
+
+    parts = key.split(".")
+    current: Any = record
+    for part in parts:
+        if isinstance(current, dict):
+            current = current.get(part)
+            if current is None:
+                return default
+        else:
+            return default
+    return current
+
+
+# -- Freshdesk integer status/priority mappings --
+
+_FRESHDESK_STATUS_MAP: dict[str, str] = {
+    "2": "open",
+    "3": "pending",
+    "4": "solved",
+    "5": "closed",
+}
+
+_FRESHDESK_PRIORITY_MAP: dict[str, str] = {
+    "1": "low",
+    "2": "medium",
+    "3": "high",
+    "4": "urgent",
+}
+
+# -- ServiceNow integer state mapping --
+
+_SERVICENOW_STATE_MAP: dict[str, str] = {
+    "1": "new",
+    "2": "open",
+    "3": "pending",
+    "6": "solved",
+    "7": "closed",
+}
+
+_SERVICENOW_PRIORITY_MAP: dict[str, str] = {
+    "1": "urgent",
+    "2": "high",
+    "3": "medium",
+    "4": "low",
+}
+
+
 def _apply_transform(value: Any, transform: str) -> Any:
     """Apply a single transform to a value."""
     if value is None:
@@ -54,6 +110,14 @@ def _apply_transform(value: Any, transform: str) -> Any:
     if transform.startswith("enum:"):
         enum_name = transform[5:]
         return _resolve_enum(enum_name, str_val)
+    if transform == "freshdesk_status":
+        return _FRESHDESK_STATUS_MAP.get(str_val, str_val)
+    if transform == "freshdesk_priority":
+        return _FRESHDESK_PRIORITY_MAP.get(str_val, str_val)
+    if transform == "servicenow_state":
+        return _SERVICENOW_STATE_MAP.get(str_val, str_val)
+    if transform == "servicenow_priority":
+        return _SERVICENOW_PRIORITY_MAP.get(str_val, str_val)
 
     return value
 
@@ -72,7 +136,7 @@ def apply_mappings(
     for record in records:
         mapped: dict[str, Any] = {}
         for m in mappings:
-            value = record.get(m.source, m.default)
+            value = _get_nested(record, m.source, m.default)
             if m.transform and value is not None:
                 value = _apply_transform(value, m.transform)
             mapped[m.target] = value
