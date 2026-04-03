@@ -96,6 +96,45 @@ This sets up CORS, request ID middleware, structured logging, and `/health` + `/
 | `add_request_id_middleware()` | Standalone request ID middleware for custom setups |
 | `create_ops_router()` | `/health` + `/usage` router for custom app instances |
 
+### Data Connectors (`simpli_core.connectors`)
+
+Ingest data from Salesforce or file uploads with automatic field mapping:
+
+```python
+from simpli_core import FileConnector, FieldMapping, apply_mappings
+
+# Parse files (CSV, JSON, JSONL — Excel/Parquet with optional extras)
+records = FileConnector.parse("tickets.csv")
+records = FileConnector.parse(uploaded_file, format="json")
+
+# Map fields from source to domain model
+mappings = [
+    FieldMapping(source="CaseNumber", target="id"),
+    FieldMapping(source="Subject", target="subject"),
+    FieldMapping(source="Priority", target="priority", transform="enum:Priority"),
+]
+mapped = apply_mappings(records, mappings)
+```
+
+**Salesforce connector** (requires `pip install simpli-core[salesforce]`):
+
+```python
+from simpli_core import SalesforceConnector
+
+sf = SalesforceConnector(
+    instance_url="https://myorg.salesforce.com",
+    client_id="...",
+    client_secret="...",
+)
+cases = sf.get_cases(where="Status = 'Open'", limit=50)
+articles = sf.get_kb_articles(limit=20)
+comments = sf.get_case_comments(case_id="5001234")
+```
+
+**Default field mappings** included: `CASE_TO_TICKET`, `CONTACT_TO_CUSTOMER`, `COMMENT_TO_MESSAGE`, `KB_TO_ARTICLE`.
+
+**Optional extras:** `simpli-core[excel]` (openpyxl), `simpli-core[parquet]` (pyarrow).
+
 ### Configuration (`simpli_core.config`)
 
 ```python
