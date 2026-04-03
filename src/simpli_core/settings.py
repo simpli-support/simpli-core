@@ -19,6 +19,10 @@ class SimpliSettings(BaseSettings):
     app_log_level: str = Field(default="info")
     app_debug: bool = Field(default=False)
     cost_tracking_enabled: bool = Field(default=False)
+    cors_origins: str = Field(
+        default="*",
+        description="Comma-separated CORS allowed origins. '*' allows all.",
+    )
     api_key: str = Field(
         default="",
         description="API key for authenticating requests. Empty = disabled.",

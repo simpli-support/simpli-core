@@ -160,12 +160,18 @@ CASE_TO_TICKET: list[FieldMapping] = [
         source="Origin", target="channel", transform="enum:Channel"
     ),
     FieldMapping(source="ContactId", target="customer_id", default="unknown"),
+    FieldMapping(source="CreatedDate", target="created_at"),
+    FieldMapping(source="ClosedDate", target="closed_at"),
+    FieldMapping(source="OwnerId", target="assigned_to"),
 ]
 
 CONTACT_TO_CUSTOMER: list[FieldMapping] = [
     FieldMapping(source="Id", target="id"),
     FieldMapping(source="Name", target="name"),
     FieldMapping(source="Email", target="email"),
+    FieldMapping(source="Phone", target="phone"),
+    FieldMapping(source="Account.Name", target="company"),
+    FieldMapping(source="Account.Type", target="account_type"),
 ]
 
 COMMENT_TO_MESSAGE: list[FieldMapping] = [
@@ -180,6 +186,7 @@ KB_TO_ARTICLE: list[FieldMapping] = [
     FieldMapping(source="Summary", target="summary"),
     FieldMapping(source="ArticleBody", target="body"),
     FieldMapping(source="UrlName", target="slug"),
+    FieldMapping(source="LastPublishedDate", target="published_at"),
 ]
 
 

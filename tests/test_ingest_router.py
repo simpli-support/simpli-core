@@ -11,10 +11,13 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from simpli_core.connectors.ingest import (
+    ALLOWED_EXTENSIONS,
+    MAX_UPLOAD_SIZE,
     IngestResult,
     PlatformIngestRequest,
     _detect_format,
     _merge_settings_credentials,
+    _validate_upload,
     create_ingest_router,
 )
 
@@ -152,6 +155,59 @@ class TestHelpers:
             "unknown_platform", {"key": "val"}, object()
         )
         assert merged == {"key": "val"}
+
+
+class TestFileUploadSecurity:
+    def test_upload_too_large(self, client: TestClient) -> None:
+        # Create a file just over the limit
+        big_content = b"x" * (MAX_UPLOAD_SIZE + 1)
+        file = io.BytesIO(big_content)
+        resp = client.post(
+            "/api/v1/ingest",
+            files={"file": ("big.csv", file, "text/csv")},
+        )
+        assert resp.status_code == 413
+        assert "too large" in resp.json()["detail"].lower()
+
+    def test_upload_invalid_type(self, client: TestClient) -> None:
+        file = io.BytesIO(b"binary content")
+        resp = client.post(
+            "/api/v1/ingest",
+            files={"file": ("malware.exe", file, "application/octet-stream")},
+        )
+        assert resp.status_code == 415
+        assert "Unsupported file type" in resp.json()["detail"]
+
+    def test_upload_allowed_types(self, client: TestClient) -> None:
+        csv = "a,b\n1,2\n"
+        file = io.BytesIO(csv.encode())
+        resp = client.post(
+            "/api/v1/ingest",
+            files={"file": ("data.csv", file, "text/csv")},
+        )
+        assert resp.status_code == 200
+
+    def test_validate_upload_size(self) -> None:
+        err = _validate_upload("data.csv", MAX_UPLOAD_SIZE + 1)
+        assert err is not None
+        assert "too large" in err
+
+    def test_validate_upload_ok(self) -> None:
+        assert _validate_upload("data.csv", 1024) is None
+
+    def test_validate_upload_bad_extension(self) -> None:
+        err = _validate_upload("data.exe", 100)
+        assert err is not None
+        assert ".exe" in err
+
+    def test_validate_upload_no_filename(self) -> None:
+        assert _validate_upload(None, 100) is None
+
+    def test_allowed_extensions_complete(self) -> None:
+        assert ".csv" in ALLOWED_EXTENSIONS
+        assert ".json" in ALLOWED_EXTENSIONS
+        assert ".jsonl" in ALLOWED_EXTENSIONS
+        assert ".exe" not in ALLOWED_EXTENSIONS
 
 
 class TestModels:

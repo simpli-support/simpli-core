@@ -118,23 +118,62 @@ class TestFieldMapping:
 
 class TestDefaultMappings:
     def test_case_to_ticket_fields(self) -> None:
-        assert len(CASE_TO_TICKET) == 7
+        assert len(CASE_TO_TICKET) == 10
         targets = {m.target for m in CASE_TO_TICKET}
         assert "id" in targets
         assert "subject" in targets
         assert "priority" in targets
+        assert "created_at" in targets
+        assert "closed_at" in targets
+        assert "assigned_to" in targets
 
     def test_contact_to_customer_fields(self) -> None:
-        assert len(CONTACT_TO_CUSTOMER) == 3
+        assert len(CONTACT_TO_CUSTOMER) == 6
         targets = {m.target for m in CONTACT_TO_CUSTOMER}
         assert "name" in targets
         assert "email" in targets
+        assert "phone" in targets
+        assert "company" in targets
+        assert "account_type" in targets
 
     def test_comment_to_message_fields(self) -> None:
         assert len(COMMENT_TO_MESSAGE) == 3
 
     def test_kb_to_article_fields(self) -> None:
-        assert len(KB_TO_ARTICLE) == 5
+        assert len(KB_TO_ARTICLE) == 6
+        targets = {m.target for m in KB_TO_ARTICLE}
+        assert "published_at" in targets
+
+    def test_case_to_ticket_applies_correctly(self) -> None:
+        record = {
+            "CaseNumber": "00001",
+            "Subject": "Help",
+            "Description": "Need help",
+            "Status": "Open",
+            "Priority": "High",
+            "Origin": "Email",
+            "ContactId": "003xx",
+            "CreatedDate": "2025-01-01T00:00:00Z",
+            "ClosedDate": None,
+            "OwnerId": "005xx",
+        }
+        result = apply_mappings([record], CASE_TO_TICKET)
+        assert result[0]["id"] == "00001"
+        assert result[0]["created_at"] == "2025-01-01T00:00:00Z"
+        assert result[0]["assigned_to"] == "005xx"
+
+    def test_contact_to_customer_nested_account(self) -> None:
+        record = {
+            "Id": "003xx",
+            "Name": "Alice",
+            "Email": "alice@co.com",
+            "Phone": "+1234567890",
+            "Account": {"Name": "Acme Corp", "Type": "Customer"},
+        }
+        result = apply_mappings([record], CONTACT_TO_CUSTOMER)
+        assert result[0]["phone"] == "+1234567890"
+        assert result[0]["company"] == "Acme Corp"
+        assert result[0]["account_type"] == "Customer"
 
 
 # -- FileConnector tests --
@@ -245,6 +284,18 @@ class TestFileConnectorParquet:
 
 
 class TestSalesforceConnector:
+    """Tests for the hardened SalesforceConnector."""
+
+    def _make_connector(self) -> "SalesforceConnector":
+        """Create a SalesforceConnector without calling __init__."""
+        from simpli_core.connectors.salesforce import SalesforceConnector
+
+        connector = object.__new__(SalesforceConnector)
+        connector.instance_url = "https://test.salesforce.com"
+        connector.sf = MagicMock()
+        connector._client = MagicMock()  # Mock the inherited httpx client
+        return connector
+
     def test_salesforce_import_error(self) -> None:
         with patch.dict(
             "sys.modules", {"simple_salesforce": None}
@@ -257,19 +308,41 @@ class TestSalesforceConnector:
                 client_secret="secret",
             )
 
-    def test_connector_strips_trailing_slash(self) -> None:
+    def test_configuration_error_empty_url(self) -> None:
+        from simpli_core.connectors.errors import ConfigurationError
         from simpli_core.connectors.salesforce import SalesforceConnector
 
-        connector = object.__new__(SalesforceConnector)
-        connector.instance_url = "https://test.salesforce.com/"
-        connector.instance_url = connector.instance_url.rstrip("/")
-        assert connector.instance_url == "https://test.salesforce.com"
+        with pytest.raises(ConfigurationError, match="instance_url"):
+            SalesforceConnector(
+                instance_url="",
+                client_id="id",
+                client_secret="secret",
+            )
+
+    def test_configuration_error_empty_client_id(self) -> None:
+        from simpli_core.connectors.errors import ConfigurationError
+        from simpli_core.connectors.salesforce import SalesforceConnector
+
+        with pytest.raises(ConfigurationError, match="client_id"):
+            SalesforceConnector(
+                instance_url="https://test.salesforce.com",
+                client_id="",
+                client_secret="secret",
+            )
+
+    def test_configuration_error_empty_secret(self) -> None:
+        from simpli_core.connectors.errors import ConfigurationError
+        from simpli_core.connectors.salesforce import SalesforceConnector
+
+        with pytest.raises(ConfigurationError, match="client_secret"):
+            SalesforceConnector(
+                instance_url="https://test.salesforce.com",
+                client_id="id",
+                client_secret="",
+            )
 
     def test_query_strips_attributes(self) -> None:
-        from simpli_core.connectors.salesforce import SalesforceConnector
-
-        connector = object.__new__(SalesforceConnector)
-        connector.sf = MagicMock()
+        connector = self._make_connector()
         connector.sf.query_all.return_value = {
             "records": [
                 {"Id": "1", "Name": "Test", "attributes": {"type": "Case"}},
@@ -282,11 +355,24 @@ class TestSalesforceConnector:
         assert "attributes" not in results[0]
         assert results[0]["Id"] == "1"
 
-    def test_get_cases_builds_soql(self) -> None:
-        from simpli_core.connectors.salesforce import SalesforceConnector
+    def test_query_wraps_exceptions(self) -> None:
+        from simpli_core.connectors.errors import PlatformAPIError
 
-        connector = object.__new__(SalesforceConnector)
-        connector.sf = MagicMock()
+        connector = self._make_connector()
+        connector.sf.query_all.side_effect = Exception("SOQL syntax error")
+
+        with pytest.raises(PlatformAPIError, match="SOQL query failed"):
+            connector.query("SELECT Bad FROM Nothing")
+
+    def test_query_empty_results(self) -> None:
+        connector = self._make_connector()
+        connector.sf.query_all.return_value = {"records": []}
+
+        results = connector.query("SELECT Id FROM Case")
+        assert results == []
+
+    def test_get_cases_builds_soql(self) -> None:
+        connector = self._make_connector()
         connector.sf.query_all.return_value = {"records": []}
 
         connector.get_cases(where="Status = 'Open'", limit=50)
@@ -296,10 +382,7 @@ class TestSalesforceConnector:
         assert "LIMIT 50" in soql
 
     def test_get_cases_no_where(self) -> None:
-        from simpli_core.connectors.salesforce import SalesforceConnector
-
-        connector = object.__new__(SalesforceConnector)
-        connector.sf = MagicMock()
+        connector = self._make_connector()
         connector.sf.query_all.return_value = {"records": []}
 
         connector.get_cases()
@@ -307,17 +390,171 @@ class TestSalesforceConnector:
         assert "WHERE" not in soql
         assert "LIMIT 100" in soql
 
-    def test_get_kb_articles_builds_soql(self) -> None:
-        from simpli_core.connectors.salesforce import SalesforceConnector
+    def test_get_cases_includes_timestamps_and_owner(self) -> None:
+        connector = self._make_connector()
+        connector.sf.query_all.return_value = {"records": []}
 
-        connector = object.__new__(SalesforceConnector)
-        connector.sf = MagicMock()
+        connector.get_cases()
+        soql = connector.sf.query_all.call_args[0][0]
+        assert "CreatedDate" in soql
+        assert "ClosedDate" in soql
+        assert "OwnerId" in soql
+
+    def test_get_tickets_is_alias(self) -> None:
+        connector = self._make_connector()
+        connector.sf.query_all.return_value = {"records": []}
+
+        connector.get_tickets(where="Status = 'New'", limit=5)
+        soql = connector.sf.query_all.call_args[0][0]
+        assert "FROM Case" in soql
+        assert "LIMIT 5" in soql
+
+    def test_get_customers_is_alias(self) -> None:
+        connector = self._make_connector()
+        connector.sf.query_all.return_value = {"records": []}
+
+        connector.get_customers(limit=25)
+        soql = connector.sf.query_all.call_args[0][0]
+        assert "FROM Contact" in soql
+        assert "LIMIT 25" in soql
+
+    def test_get_contacts_includes_phone_and_account(self) -> None:
+        connector = self._make_connector()
+        connector.sf.query_all.return_value = {"records": []}
+
+        connector.get_contacts()
+        soql = connector.sf.query_all.call_args[0][0]
+        assert "Phone" in soql
+        assert "Account.Name" in soql
+        assert "Account.Type" in soql
+
+    def test_get_messages_is_alias(self) -> None:
+        connector = self._make_connector()
+        connector.sf.query_all.return_value = {"records": []}
+
+        connector.get_messages("001xx")
+        soql = connector.sf.query_all.call_args[0][0]
+        assert "CaseComment" in soql
+        assert "001xx" in soql
+
+    def test_get_articles_is_alias(self) -> None:
+        connector = self._make_connector()
+        connector.sf.query_all.return_value = {"records": []}
+
+        connector.get_articles(limit=10)
+        soql = connector.sf.query_all.call_args[0][0]
+        assert "Knowledge__kav" in soql
+        assert "LIMIT 10" in soql
+
+    def test_get_kb_articles_builds_soql(self) -> None:
+        connector = self._make_connector()
         connector.sf.query_all.return_value = {"records": []}
 
         connector.get_kb_articles(limit=10)
         soql = connector.sf.query_all.call_args[0][0]
         assert "Knowledge__kav" in soql
         assert "LIMIT 10" in soql
+
+    def test_close_calls_super(self) -> None:
+        connector = self._make_connector()
+        connector.close()
+        connector._client.close.assert_called_once()
+
+    # -- SOQL injection tests --
+
+    def test_sanitize_soql_escapes_quotes(self) -> None:
+        from simpli_core.connectors.salesforce import _sanitize_soql_value
+
+        assert _sanitize_soql_value("test'value") == "test\\'value"
+        assert _sanitize_soql_value("normal") == "normal"
+        assert _sanitize_soql_value("a'b'c") == "a\\'b\\'c"
+
+    def test_sanitize_soql_strips_control_chars(self) -> None:
+        from simpli_core.connectors.salesforce import _sanitize_soql_value
+
+        assert _sanitize_soql_value("test\x00value") == "testvalue"
+        assert _sanitize_soql_value("test\nvalue") == "testvalue"
+
+    def test_get_case_comments_sanitizes_id(self) -> None:
+        connector = self._make_connector()
+        connector.sf.query_all.return_value = {"records": []}
+
+        # Attempt injection via case_id
+        connector.get_case_comments("001xx' OR Id != '")
+        soql = connector.sf.query_all.call_args[0][0]
+        # The single quotes should be escaped
+        assert "001xx\\' OR Id != \\'" in soql
+
+    def test_get_feed_items_sanitizes_id(self) -> None:
+        connector = self._make_connector()
+        connector.sf.query_all.return_value = {"records": []}
+
+        connector.get_feed_items("001xx' OR Id != '")
+        soql = connector.sf.query_all.call_args[0][0]
+        assert "001xx\\' OR Id != \\'" in soql
+
+    # -- Write method tests --
+
+    def test_update_case(self) -> None:
+        connector = self._make_connector()
+        connector.sf.Case.update.return_value = None
+        connector.sf.Case.get.return_value = {
+            "Id": "500xx",
+            "Status": "Closed",
+        }
+
+        result = connector.update_case("500xx", {"Status": "Closed"})
+        connector.sf.Case.update.assert_called_once_with(
+            "500xx", {"Status": "Closed"}
+        )
+        assert result["Status"] == "Closed"
+
+    def test_update_ticket_is_alias(self) -> None:
+        connector = self._make_connector()
+        connector.sf.Case.update.return_value = None
+        connector.sf.Case.get.return_value = {"Id": "500xx"}
+
+        connector.update_ticket("500xx", {"Priority": "High"})
+        connector.sf.Case.update.assert_called_once_with(
+            "500xx", {"Priority": "High"}
+        )
+
+    def test_update_case_wraps_errors(self) -> None:
+        from simpli_core.connectors.errors import PlatformAPIError
+
+        connector = self._make_connector()
+        connector.sf.Case.update.side_effect = Exception("Not found")
+
+        with pytest.raises(PlatformAPIError, match="Failed to update case"):
+            connector.update_case("bad_id", {"Status": "Closed"})
+
+    def test_add_case_comment(self) -> None:
+        connector = self._make_connector()
+        connector.sf.CaseComment.create.return_value = {
+            "id": "comment-1",
+            "success": True,
+        }
+
+        result = connector.add_case_comment(
+            "500xx", "Fixed the issue", is_published=True
+        )
+        connector.sf.CaseComment.create.assert_called_once_with(
+            {
+                "ParentId": "500xx",
+                "CommentBody": "Fixed the issue",
+                "IsPublished": True,
+            }
+        )
+        assert result["success"] is True
+
+    def test_add_case_comment_wraps_errors(self) -> None:
+        from simpli_core.connectors.errors import PlatformAPIError
+
+        connector = self._make_connector()
+        connector.sf.CaseComment.create.side_effect = Exception("API error")
+
+        with pytest.raises(PlatformAPIError, match="Failed to add comment"):
+            connector.add_case_comment("500xx", "text")
 
 
 # -- SalesforceSettings tests --

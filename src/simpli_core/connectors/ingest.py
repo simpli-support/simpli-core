@@ -12,6 +12,8 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from pathlib import Path
+
 from fastapi import APIRouter, File, Form, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -26,6 +28,28 @@ from simpli_core.connectors.mapping import (
 from simpli_core.connectors.registry import get_connector, list_platforms
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# File upload security constants
+# ---------------------------------------------------------------------------
+
+MAX_UPLOAD_SIZE: int = 50 * 1024 * 1024  # 50 MB
+ALLOWED_EXTENSIONS: frozenset[str] = frozenset({".csv", ".json", ".jsonl"})
+
+
+def _validate_upload(filename: str | None, size: int) -> str | None:
+    """Validate an uploaded file. Returns error message or None if valid."""
+    if size > MAX_UPLOAD_SIZE:
+        return (
+            f"File too large: {size:,} bytes "
+            f"(max {MAX_UPLOAD_SIZE // (1024 * 1024)} MB)"
+        )
+    if filename:
+        ext = Path(filename).suffix.lower()
+        if ext and ext not in ALLOWED_EXTENSIONS:
+            allowed = ", ".join(sorted(ALLOWED_EXTENSIONS))
+            return f"Unsupported file type: {ext}. Allowed: {allowed}"
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +127,22 @@ def create_ingest_router(
         ),
     ) -> IngestResult:
         """Ingest records from a file upload."""
-        logger.info("ingest_file", extra={"filename": file.filename})
+        # Read file content for size validation
+        content = await file.read()
+        await file.seek(0)  # Reset for parsing
+
+        validation_error = _validate_upload(file.filename, len(content))
+        if validation_error:
+            status = 413 if "too large" in validation_error else 415
+            return JSONResponse(  # type: ignore[return-value]
+                status_code=status,
+                content={"detail": validation_error},
+            )
+
+        logger.info(
+            "ingest_file",
+            extra={"filename": file.filename, "size": len(content)},
+        )
 
         records = FileConnector.parse(
             file.file, format=_detect_format(file.filename)

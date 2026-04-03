@@ -3,16 +3,34 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import httpx
 
+from simpli_core.connectors.base import BaseConnector
+from simpli_core.connectors.errors import (
+    AuthenticationError,
+    ConfigurationError,
+    PlatformAPIError,
+)
 from simpli_core.connectors.registry import register
 
 logger = logging.getLogger(__name__)
 
 
-class SalesforceConnector:
+def _sanitize_soql_value(value: str) -> str:
+    """Escape a value for safe interpolation into a SOQL query.
+
+    Escapes single quotes and strips characters that could break SOQL syntax.
+    """
+    # Remove any control characters
+    cleaned = re.sub(r"[\x00-\x1f\x7f]", "", value)
+    # Escape single quotes for SOQL
+    return cleaned.replace("'", "\\'")
+
+
+class SalesforceConnector(BaseConnector):
     """Connect to Salesforce via OAuth2 Client Credentials and query data.
 
     Requires the ``simple-salesforce`` package for SOQL queries.
@@ -29,6 +47,20 @@ class SalesforceConnector:
         client_id: str,
         client_secret: str,
     ) -> None:
+        # Validate required credentials
+        if not instance_url:
+            raise ConfigurationError(
+                "instance_url is required", platform="salesforce"
+            )
+        if not client_id:
+            raise ConfigurationError(
+                "client_id is required", platform="salesforce"
+            )
+        if not client_secret:
+            raise ConfigurationError(
+                "client_secret is required", platform="salesforce"
+            )
+
         try:
             from simple_salesforce import Salesforce
         except ImportError:
@@ -38,26 +70,63 @@ class SalesforceConnector:
             )
             raise ImportError(msg) from None
 
-        # Strip trailing slash
-        self.instance_url = instance_url.rstrip("/")
+        # Initialize BaseConnector (httpx client for consistency/context manager)
+        clean_url = instance_url.rstrip("/")
+        super().__init__(base_url=clean_url)
+        self.instance_url = clean_url
 
-        # Authenticate via OAuth2 Client Credentials Flow (httpx)
+        # Authenticate via OAuth2 Client Credentials Flow
         token_url = f"{self.instance_url}/services/oauth2/token"
-        resp = httpx.post(
-            token_url,
-            data={
-                "grant_type": "client_credentials",
-                "client_id": client_id,
-                "client_secret": client_secret,
-            },
-            timeout=30,
-        )
-        resp.raise_for_status()
+        try:
+            resp = httpx.post(
+                token_url,
+                data={
+                    "grant_type": "client_credentials",
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                },
+                timeout=30,
+            )
+        except httpx.HTTPError as exc:
+            logger.warning(
+                "salesforce_auth_failed",
+                extra={"instance_url": self.instance_url, "error": str(exc)},
+            )
+            raise PlatformAPIError(
+                f"Failed to connect to Salesforce: {exc}",
+                platform="salesforce",
+            ) from exc
+
+        if resp.status_code in (401, 403):
+            logger.warning(
+                "salesforce_auth_rejected",
+                extra={"status_code": resp.status_code},
+            )
+            raise AuthenticationError(
+                f"Salesforce authentication failed: {resp.status_code} {resp.text}",
+                platform="salesforce",
+            )
+        if not resp.is_success:
+            raise PlatformAPIError(
+                f"Salesforce OAuth error: {resp.status_code} {resp.text}",
+                platform="salesforce",
+                status_code=resp.status_code,
+                response_body=resp.text,
+            )
+
         token_data = resp.json()
         access_token = token_data["access_token"]
 
         # The instance URL from the token response may differ
         resolved_instance = token_data.get("instance_url", self.instance_url)
+        if resolved_instance != self.instance_url:
+            logger.info(
+                "salesforce_url_resolved",
+                extra={
+                    "provided": self.instance_url,
+                    "resolved": resolved_instance,
+                },
+            )
 
         self.sf = Salesforce(
             instance_url=resolved_instance,
@@ -67,11 +136,22 @@ class SalesforceConnector:
 
     def query(self, soql: str) -> list[dict[str, Any]]:
         """Execute a raw SOQL query and return records."""
-        result = self.sf.query_all(soql)
+        logger.debug("salesforce_query", extra={"soql": soql[:200]})
+        try:
+            result = self.sf.query_all(soql)
+        except Exception as exc:
+            raise PlatformAPIError(
+                f"SOQL query failed: {exc}",
+                platform="salesforce",
+            ) from exc
         records: list[dict[str, Any]] = result.get("records", [])
         # Remove Salesforce metadata from each record
         for rec in records:
             rec.pop("attributes", None)
+        logger.info(
+            "salesforce_query_result",
+            extra={"record_count": len(records)},
+        )
         return records
 
     def get_tickets(
@@ -90,7 +170,7 @@ class SalesforceConnector:
         """Fetch Case records."""
         soql = (
             "SELECT Id, CaseNumber, Subject, Description, Status, Priority, "
-            "Origin, CreatedDate, ClosedDate, ContactId "
+            "Origin, CreatedDate, ClosedDate, ContactId, OwnerId "
             "FROM Case"
         )
         if where:
@@ -127,10 +207,11 @@ class SalesforceConnector:
         case_id: str,
     ) -> list[dict[str, Any]]:
         """Fetch CaseComment records for a specific case."""
+        safe_id = _sanitize_soql_value(case_id)
         soql = (
             "SELECT Id, ParentId, CommentBody, CreatedDate, CreatedById, "
             "IsPublished "
-            f"FROM CaseComment WHERE ParentId = '{case_id}' "
+            f"FROM CaseComment WHERE ParentId = '{safe_id}' "
             "ORDER BY CreatedDate ASC"
         )
         return self.query(soql)
@@ -147,12 +228,59 @@ class SalesforceConnector:
         parent_id: str,
     ) -> list[dict[str, Any]]:
         """Fetch FeedItem records (Chatter) for a case."""
+        safe_id = _sanitize_soql_value(parent_id)
         soql = (
             "SELECT Id, ParentId, Body, CreatedDate, CreatedById, Type "
-            f"FROM FeedItem WHERE ParentId = '{parent_id}' "
+            f"FROM FeedItem WHERE ParentId = '{safe_id}' "
             "ORDER BY CreatedDate ASC"
         )
         return self.query(soql)
+
+    def update_case(
+        self,
+        case_id: str,
+        fields: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update a Case record and return the updated fields."""
+        try:
+            self.sf.Case.update(case_id, fields)
+            return self.sf.Case.get(case_id)
+        except Exception as exc:
+            raise PlatformAPIError(
+                f"Failed to update case {case_id}: {exc}",
+                platform="salesforce",
+            ) from exc
+
+    def update_ticket(
+        self,
+        ticket_id: str,
+        fields: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update a case (alias for update_case)."""
+        return self.update_case(ticket_id, fields)
+
+    def add_case_comment(
+        self,
+        case_id: str,
+        body: str,
+        *,
+        is_published: bool = True,
+    ) -> dict[str, Any]:
+        """Add a CaseComment to a case."""
+        try:
+            result = self.sf.CaseComment.create(
+                {
+                    "ParentId": case_id,
+                    "CommentBody": body,
+                    "IsPublished": is_published,
+                }
+            )
+            return result  # type: ignore[no-any-return]
+        except Exception as exc:
+            raise PlatformAPIError(
+                f"Failed to add comment to case {case_id}: {exc}",
+                platform="salesforce",
+            ) from exc
 
     def get_kb_articles(
         self,
@@ -180,7 +308,8 @@ class SalesforceConnector:
         return self.get_kb_articles(where=where, limit=limit)
 
     def close(self) -> None:
-        """No-op — Salesforce uses simple-salesforce session."""
+        """Close the HTTP client (inherited) and clean up."""
+        super().close()
 
 
 # Register with the connector registry
