@@ -1,8 +1,15 @@
 """Simpli Core — shared SDK for the Simpli Support product family."""
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 from simpli_core.config import SimpliConfig, load_config
+from simpli_core.connectors import (
+    FieldMapping,
+    FileConnector,
+    SalesforceConnector,
+    SalesforceSettings,
+    apply_mappings,
+)
 from simpli_core.fastapi import (
     ChatMessage,
     add_request_id_middleware,
@@ -41,16 +48,21 @@ __all__ = [
     "CostTracker",
     "Customer",
     "CustomerTier",
+    "FieldMapping",
+    "FileConnector",
     "LLMCost",
     "Message",
     "ModelPricing",
     "Priority",
+    "SalesforceConnector",
+    "SalesforceSettings",
     "SimpliConfig",
     "SimpliSettings",
     "Ticket",
     "TicketStatus",
     "TokenUsage",
     "add_request_id_middleware",
+    "apply_mappings",
     "create_app",
     "create_ops_router",
     "load_config",
