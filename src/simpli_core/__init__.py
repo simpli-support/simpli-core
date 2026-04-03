@@ -1,6 +1,6 @@
 """Simpli Core — shared SDK for the Simpli Support product family."""
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 from simpli_core.config import SimpliConfig, load_config
 from simpli_core.connectors import (
@@ -13,6 +13,12 @@ from simpli_core.connectors import (
     apply_mappings,
     get_connector,
     list_platforms,
+)
+from simpli_core.connectors.ingest import IngestResult, create_ingest_router
+from simpli_core.errors import (
+    ExternalServiceError,
+    NotFoundError,
+    SimpliError,
 )
 from simpli_core.fastapi import (
     ChatMessage,
@@ -46,6 +52,8 @@ __all__ = [
     "BaseConnector",
     "ChatMessage",
     "ConnectorError",
+    "ExternalServiceError",
+    "IngestResult",
     "DEFAULT_PRICING",
     "Agent",
     "AuthorType",
@@ -59,10 +67,12 @@ __all__ = [
     "LLMCost",
     "Message",
     "ModelPricing",
+    "NotFoundError",
     "Priority",
     "SalesforceConnector",
     "SalesforceSettings",
     "SimpliConfig",
+    "SimpliError",
     "SimpliSettings",
     "Ticket",
     "TicketStatus",
@@ -70,6 +80,7 @@ __all__ = [
     "add_request_id_middleware",
     "apply_mappings",
     "create_app",
+    "create_ingest_router",
     "create_ops_router",
     "get_connector",
     "list_platforms",

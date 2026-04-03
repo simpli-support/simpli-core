@@ -10,13 +10,19 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, FastAPI, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from simpli_core.auth import add_api_key_middleware
+from simpli_core.errors import SimpliError
 from simpli_core.logging import setup_logging
 from simpli_core.models import AuthorType
 from simpli_core.settings import SimpliSettings
 from simpli_core.usage import CostTracker
+
+logger = structlog.get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -127,7 +133,70 @@ def create_app(
     # Request ID middleware
     add_request_id_middleware(app)
 
+    # API key auth (disabled when api_key is empty)
+    api_key = getattr(settings, "api_key", "")
+    if api_key:
+        add_api_key_middleware(app, api_key)
+
+    # Centralized error handlers
+    _register_error_handlers(app)
+
     # Health + usage
     app.include_router(create_ops_router(cost_tracker))
 
     return app
+
+
+def _register_error_handlers(app: FastAPI) -> None:
+    """Register shared exception handlers on the app."""
+
+    @app.exception_handler(SimpliError)
+    async def simpli_error_handler(
+        request: Request, exc: SimpliError
+    ) -> JSONResponse:
+        request_id = request.headers.get("X-Request-ID")
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "error_code": exc.error_code,
+                "detail": exc.detail,
+                "request_id": request_id,
+            },
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        request_id = request.headers.get("X-Request-ID")
+        logger.warning("validation_error", errors=exc.errors())
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error_code": "VALIDATION_ERROR",
+                "detail": "Request validation failed",
+                "request_id": request_id,
+                "errors": [
+                    {
+                        "field": " -> ".join(str(loc) for loc in err["loc"]),
+                        "message": err["msg"],
+                    }
+                    for err in exc.errors()
+                ],
+            },
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_error_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
+        request_id = request.headers.get("X-Request-ID")
+        logger.exception("unhandled_error", exc_info=exc)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error_code": "INTERNAL_ERROR",
+                "detail": "An internal error occurred",
+                "request_id": request_id,
+            },
+        )
