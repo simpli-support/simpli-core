@@ -181,3 +181,139 @@ KB_TO_ARTICLE: list[FieldMapping] = [
     FieldMapping(source="ArticleBody", target="body"),
     FieldMapping(source="UrlName", target="slug"),
 ]
+
+
+# -- Default Zendesk → Simpli field mappings --
+
+ZENDESK_TICKET_TO_TICKET: list[FieldMapping] = [
+    FieldMapping(source="id", target="id"),
+    FieldMapping(source="subject", target="subject"),
+    FieldMapping(source="description", target="description", default=""),
+    FieldMapping(
+        source="status", target="status", transform="enum:TicketStatus"
+    ),
+    FieldMapping(
+        source="priority", target="priority", transform="enum:Priority"
+    ),
+    FieldMapping(
+        source="via.channel", target="channel", transform="enum:Channel"
+    ),
+    FieldMapping(source="requester_id", target="customer_id"),
+]
+
+ZENDESK_COMMENT_TO_MESSAGE: list[FieldMapping] = [
+    FieldMapping(source="id", target="id"),
+    FieldMapping(source="body", target="body"),
+    FieldMapping(source="author_id", target="author_id"),
+]
+
+ZENDESK_ARTICLE_TO_ARTICLE: list[FieldMapping] = [
+    FieldMapping(source="id", target="id"),
+    FieldMapping(source="title", target="title"),
+    FieldMapping(source="body", target="body"),
+    FieldMapping(source="name", target="slug"),
+]
+
+
+# -- Default Freshdesk → Simpli field mappings --
+
+FRESHDESK_TICKET_TO_TICKET: list[FieldMapping] = [
+    FieldMapping(source="id", target="id"),
+    FieldMapping(source="subject", target="subject"),
+    FieldMapping(
+        source="description_text", target="description", default=""
+    ),
+    FieldMapping(
+        source="status", target="status", transform="freshdesk_status"
+    ),
+    FieldMapping(
+        source="priority", target="priority", transform="freshdesk_priority"
+    ),
+    FieldMapping(source="source", target="channel", transform="enum:Channel"),
+    FieldMapping(source="requester_id", target="customer_id"),
+]
+
+
+# -- Default Intercom → Simpli field mappings --
+
+INTERCOM_CONVERSATION_TO_TICKET: list[FieldMapping] = [
+    FieldMapping(source="id", target="id"),
+    FieldMapping(source="title", target="subject", default="(no subject)"),
+    FieldMapping(source="source.body", target="description", default=""),
+    FieldMapping(source="state", target="status", transform="enum:TicketStatus"),
+    FieldMapping(source="priority", target="priority", transform="enum:Priority"),
+    FieldMapping(source="contacts.contacts.0.id", target="customer_id", default="unknown"),
+]
+
+
+# -- Default HubSpot → Simpli field mappings --
+
+HUBSPOT_TICKET_TO_TICKET: list[FieldMapping] = [
+    FieldMapping(source="id", target="id"),
+    FieldMapping(source="subject", target="subject", default="(no subject)"),
+    FieldMapping(source="content", target="description", default=""),
+    FieldMapping(
+        source="hs_pipeline_stage", target="status", transform="lower"
+    ),
+    FieldMapping(
+        source="hs_ticket_priority", target="priority", transform="enum:Priority"
+    ),
+]
+
+
+# -- Default Jira → Simpli field mappings --
+
+JIRA_ISSUE_TO_TICKET: list[FieldMapping] = [
+    FieldMapping(source="key", target="id"),
+    FieldMapping(source="summary", target="subject"),
+    FieldMapping(source="description", target="description", default=""),
+    FieldMapping(
+        source="status", target="status", transform="enum:TicketStatus"
+    ),
+    FieldMapping(
+        source="priority", target="priority", transform="enum:Priority"
+    ),
+    FieldMapping(source="reporter_id", target="customer_id", default="unknown"),
+]
+
+
+# -- Default ServiceNow → Simpli field mappings --
+
+SERVICENOW_INCIDENT_TO_TICKET: list[FieldMapping] = [
+    FieldMapping(source="number", target="id"),
+    FieldMapping(source="short_description", target="subject"),
+    FieldMapping(source="description", target="description", default=""),
+    FieldMapping(
+        source="state", target="status", transform="servicenow_state"
+    ),
+    FieldMapping(
+        source="priority", target="priority", transform="servicenow_priority"
+    ),
+    FieldMapping(source="caller_id", target="customer_id", default="unknown"),
+]
+
+SERVICENOW_KB_TO_ARTICLE: list[FieldMapping] = [
+    FieldMapping(source="sys_id", target="id"),
+    FieldMapping(source="short_description", target="title"),
+    FieldMapping(source="text", target="body"),
+    FieldMapping(source="number", target="slug"),
+]
+
+
+# -- Platform → default ticket mappings lookup --
+
+DEFAULT_TICKET_MAPPINGS: dict[str, list[FieldMapping]] = {
+    "salesforce": CASE_TO_TICKET,
+    "zendesk": ZENDESK_TICKET_TO_TICKET,
+    "freshdesk": FRESHDESK_TICKET_TO_TICKET,
+    "intercom": INTERCOM_CONVERSATION_TO_TICKET,
+    "hubspot": HUBSPOT_TICKET_TO_TICKET,
+    "jira": JIRA_ISSUE_TO_TICKET,
+    "servicenow": SERVICENOW_INCIDENT_TO_TICKET,
+}
+
+DEFAULT_ARTICLE_MAPPINGS: dict[str, list[FieldMapping]] = {
+    "salesforce": KB_TO_ARTICLE,
+    "zendesk": ZENDESK_ARTICLE_TO_ARTICLE,
+    "servicenow": SERVICENOW_KB_TO_ARTICLE,
+}
