@@ -104,7 +104,6 @@ class IntercomConnector(BaseConnector):
             json=payload,
         )
 
-
     def describe_fields(
         self,
         object_type: str = "ticket",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 import logging
 from typing import Any
 
@@ -51,9 +52,7 @@ class BaseConnector:
             headers=headers,
             timeout=timeout,
         )
-        logger.info(
-            "Connector initialized: %s → %s", self.platform, base_url
-        )
+        logger.info("Connector initialized: %s → %s", self.platform, base_url)
 
     # -- HTTP helpers --
 
@@ -112,10 +111,8 @@ class BaseConnector:
         if resp.status_code == 429:
             retry_after = None
             if ra := resp.headers.get("Retry-After"):
-                try:
+                with contextlib.suppress(ValueError):
                     retry_after = int(ra)
-                except ValueError:
-                    pass
             raise RateLimitError(
                 f"Rate limited: {body}",
                 platform=self.platform,
@@ -178,9 +175,7 @@ class BaseConnector:
                 if parsed.query:
                     from urllib.parse import parse_qs
 
-                    params.update(
-                        {k: v[0] for k, v in parse_qs(parsed.query).items()}
-                    )
+                    params.update({k: v[0] for k, v in parse_qs(parsed.query).items()})
             else:
                 params["page[after]"] = str(next_cursor)
 

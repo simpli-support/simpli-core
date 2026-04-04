@@ -71,6 +71,4 @@ class ErrorResponse(BaseModel):
 
     error_code: str = Field(description="Machine-readable error code")
     detail: str = Field(description="Human-readable error message")
-    request_id: str | None = Field(
-        default=None, description="Request ID for tracing"
-    )
+    request_id: str | None = Field(default=None, description="Request ID for tracing")

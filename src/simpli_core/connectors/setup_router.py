@@ -101,9 +101,7 @@ def create_setup_router(*, settings: Any = None) -> APIRouter:
         except NotImplementedError:
             return JSONResponse(
                 status_code=501,
-                content={
-                    "detail": f"{platform} does not support field discovery."
-                },
+                content={"detail": f"{platform} does not support field discovery."},
             )
         except Exception as exc:
             return JSONResponse(
@@ -144,9 +142,7 @@ def create_setup_router(*, settings: Any = None) -> APIRouter:
         if config is None:
             return JSONResponse(
                 status_code=404,
-                content={
-                    "detail": f"No config for {platform}:{object_type}"
-                },
+                content={"detail": f"No config for {platform}:{object_type}"},
             )
         return config
 
@@ -160,9 +156,7 @@ def create_setup_router(*, settings: Any = None) -> APIRouter:
         if not deleted:
             return JSONResponse(
                 status_code=404,
-                content={
-                    "detail": f"No config for {platform}:{object_type}"
-                },
+                content={"detail": f"No config for {platform}:{object_type}"},
             )
         return {"status": "deleted", "platform": platform}
 

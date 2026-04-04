@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx
 
@@ -56,17 +56,11 @@ class SalesforceConnector(BaseConnector):
     ) -> None:
         # Validate required credentials
         if not instance_url:
-            raise ConfigurationError(
-                "instance_url is required", platform="salesforce"
-            )
+            raise ConfigurationError("instance_url is required", platform="salesforce")
         if not client_id:
-            raise ConfigurationError(
-                "client_id is required", platform="salesforce"
-            )
+            raise ConfigurationError("client_id is required", platform="salesforce")
         if not client_secret:
-            raise ConfigurationError(
-                "client_secret is required", platform="salesforce"
-            )
+            raise ConfigurationError("client_secret is required", platform="salesforce")
 
         try:
             from simple_salesforce import Salesforce
@@ -179,9 +173,17 @@ class SalesforceConnector(BaseConnector):
         Includes any extra fields saved via ``simpli-core setup``.
         """
         base_fields = [
-            "Id", "CaseNumber", "Subject", "Description", "Status",
-            "Priority", "Origin", "CreatedDate", "ClosedDate",
-            "ContactId", "OwnerId",
+            "Id",
+            "CaseNumber",
+            "Subject",
+            "Description",
+            "Status",
+            "Priority",
+            "Origin",
+            "CreatedDate",
+            "ClosedDate",
+            "ContactId",
+            "OwnerId",
         ]
         config = load_field_config("salesforce", "ticket")
         if config:
@@ -203,11 +205,7 @@ class SalesforceConnector(BaseConnector):
         limit: int = 100,
     ) -> list[dict[str, Any]]:
         """Fetch Contact records with Account info."""
-        soql = (
-            "SELECT Id, Name, Email, Phone, "
-            "Account.Name, Account.Type "
-            "FROM Contact"
-        )
+        soql = "SELECT Id, Name, Email, Phone, Account.Name, Account.Type FROM Contact"
         if where:
             soql += f" WHERE {where}"
         soql += f" LIMIT {limit}"
@@ -328,7 +326,7 @@ class SalesforceConnector(BaseConnector):
 
     # -- Field type mapping for Salesforce describe results --
 
-    _SF_TYPE_MAP: dict[str, str] = {
+    _SF_TYPE_MAP: ClassVar[dict[str, str]] = {
         "string": "string",
         "textarea": "string",
         "email": "string",
@@ -370,7 +368,8 @@ class SalesforceConnector(BaseConnector):
             picklist_vals = None
             if field.get("type") in ("picklist", "multipicklist"):
                 picklist_vals = [
-                    pv["value"] for pv in field.get("picklistValues", [])
+                    pv["value"]
+                    for pv in field.get("picklistValues", [])
                     if pv.get("active")
                 ]
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from simpli_core.connectors.base import BaseConnector
@@ -63,10 +62,7 @@ class JiraConnector(BaseConnector):
         )
         config = load_field_config("jira", "ticket")
         if config:
-            extra = ",".join(
-                f for f in config.selected_fields
-                if f not in base_fields
-            )
+            extra = ",".join(f for f in config.selected_fields if f not in base_fields)
             fields_param = f"{base_fields},{extra}" if extra else base_fields
         else:
             fields_param = base_fields
@@ -162,18 +158,12 @@ class JiraConnector(BaseConnector):
             "key": issue.get("key", ""),
             "id": issue.get("id", ""),
             "summary": fields.get("summary", ""),
-            "description": JiraConnector._adf_to_text(
-                fields.get("description", {})
-            ),
+            "description": JiraConnector._adf_to_text(fields.get("description", {})),
             "status": (fields.get("status") or {}).get("name", ""),
             "priority": (fields.get("priority") or {}).get("name", ""),
             "issuetype": (fields.get("issuetype") or {}).get("name", ""),
-            "assignee_id": (fields.get("assignee") or {}).get(
-                "accountId", ""
-            ),
-            "reporter_id": (fields.get("reporter") or {}).get(
-                "accountId", ""
-            ),
+            "assignee_id": (fields.get("assignee") or {}).get("accountId", ""),
+            "reporter_id": (fields.get("reporter") or {}).get("accountId", ""),
             "created": fields.get("created", ""),
             "updated": fields.get("updated", ""),
         }
@@ -199,7 +189,6 @@ class JiraConnector(BaseConnector):
 
         _extract(adf)
         return " ".join(texts)
-
 
     def describe_fields(
         self,

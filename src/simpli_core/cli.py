@@ -40,11 +40,13 @@ def config(
 @app.command()
 def setup(
     platform: str = typer.Argument(
-        ..., help="Platform to configure (salesforce, zendesk, freshdesk, hubspot, jira, servicenow, intercom)"
+        ...,
+        help=(
+            "Platform to configure (salesforce, zendesk, "
+            "freshdesk, hubspot, jira, servicenow, intercom)"
+        ),
     ),
-    object_type: str = typer.Option(
-        "ticket", help="Object type: ticket or article"
-    ),
+    object_type: str = typer.Option("ticket", help="Object type: ticket or article"),
 ) -> None:
     """Discover fields from a connected platform and configure field mappings.
 
@@ -95,7 +97,7 @@ def setup(
             f"{platform} connector does not support field discovery yet.",
             err=True,
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     except Exception as exc:
         typer.echo(f"Field discovery failed: {exc}", err=True)
         raise typer.Exit(code=1) from exc
@@ -190,9 +192,7 @@ def setup(
             f"  Target name for '{fd.name}'",
             default=default_target,
         )
-        custom_mappings.append(
-            FieldMapping(source=fd.name, target=target)
-        )
+        custom_mappings.append(FieldMapping(source=fd.name, target=target))
         selected_names.append(fd.name)
 
     # Save config
@@ -206,7 +206,7 @@ def setup(
 
     typer.echo(f"\n✓ Saved configuration for {platform}:{object_type}")
     typer.echo(f"  {len(custom_mappings)} custom field mapping(s)")
-    typer.echo(f"  Config: ~/.simpli/field_config.json")
+    typer.echo("  Config: ~/.simpli/field_config.json")
 
     # Offer test
     if typer.confirm("\nTest the configuration by fetching 1 record?", default=False):

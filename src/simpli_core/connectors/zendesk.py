@@ -14,8 +14,14 @@ from simpli_core.connectors.mapping import (
 from simpli_core.connectors.registry import register
 
 _ZENDESK_STANDARD_TYPES = {
-    "subject", "description", "status", "priority", "group",
-    "assignee", "tickettype", "organization",
+    "subject",
+    "description",
+    "status",
+    "priority",
+    "group",
+    "assignee",
+    "tickettype",
+    "organization",
 }
 
 
@@ -116,7 +122,6 @@ class ZendeskConnector(BaseConnector):
             }
         return self._put(f"/api/v2/tickets/{ticket_id}.json", json=payload)
 
-
     def describe_fields(
         self,
         object_type: str = "ticket",
@@ -142,9 +147,7 @@ class ZendeskConnector(BaseConnector):
                     label=field.get("title", ""),
                     field_type="picklist" if picklist_vals else "string",
                     category=(
-                        FieldCategory.STANDARD
-                        if is_standard
-                        else FieldCategory.CUSTOM
+                        FieldCategory.STANDARD if is_standard else FieldCategory.CUSTOM
                     ),
                     required=field.get("required", False),
                     picklist_values=picklist_vals,

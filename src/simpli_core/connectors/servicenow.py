@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from simpli_core.connectors.base import BaseConnector
 from simpli_core.connectors.field_config import load_field_config
@@ -15,10 +15,22 @@ from simpli_core.connectors.mapping import (
 from simpli_core.connectors.registry import register
 
 _SERVICENOW_STANDARD_FIELDS = {
-    "sys_id", "number", "short_description", "description",
-    "state", "priority", "urgency", "impact", "category",
-    "opened_at", "closed_at", "caller_id", "assigned_to",
-    "assignment_group", "sys_created_on", "sys_updated_on",
+    "sys_id",
+    "number",
+    "short_description",
+    "description",
+    "state",
+    "priority",
+    "urgency",
+    "impact",
+    "category",
+    "opened_at",
+    "closed_at",
+    "caller_id",
+    "assigned_to",
+    "assignment_group",
+    "sys_created_on",
+    "sys_updated_on",
 }
 
 
@@ -64,10 +76,7 @@ class ServiceNowConnector(BaseConnector):
         )
         config = load_field_config("servicenow", "ticket")
         if config:
-            extra = ",".join(
-                f for f in config.selected_fields
-                if f not in base_fields
-            )
+            extra = ",".join(f for f in config.selected_fields if f not in base_fields)
             sysparm_fields = f"{base_fields},{extra}" if extra else base_fields
         else:
             sysparm_fields = base_fields
@@ -110,14 +119,10 @@ class ServiceNowConnector(BaseConnector):
         """
         params: dict[str, Any] = {
             "sysparm_query": f"element_id={ticket_id}",
-            "sysparm_fields": (
-                "sys_id,value,element,sys_created_on,sys_created_by"
-            ),
+            "sysparm_fields": ("sys_id,value,element,sys_created_on,sys_created_by"),
             "sysparm_limit": 200,
         }
-        data = self._get(
-            "/api/now/table/sys_journal_field", params=params
-        )
+        data = self._get("/api/now/table/sys_journal_field", params=params)
         return data.get("result", [])
 
     def get_articles(
@@ -156,8 +161,7 @@ class ServiceNowConnector(BaseConnector):
             json=payload,
         )
 
-
-    _SNOW_TYPE_MAP: dict[str, str] = {
+    _SNOW_TYPE_MAP: ClassVar[dict[str, str]] = {
         "string": "string",
         "integer": "number",
         "boolean": "boolean",
@@ -191,7 +195,7 @@ class ServiceNowConnector(BaseConnector):
 
         descriptors: list[FieldDescriptor] = []
         for field in raw_fields:
-            if not field.get("active", "true") == "true":
+            if field.get("active", "true") != "true":
                 continue
             name = field.get("element", "")
             if not name:

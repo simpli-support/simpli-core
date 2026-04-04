@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
-import os
 
 import pytest
 
@@ -24,7 +24,6 @@ from simpli_core.connectors.mapping import (
 )
 from simpli_core.connectors.settings import SalesforceSettings
 from simpli_core.prompt_context import build_record_context
-
 
 # -- FieldMapping tests --
 
@@ -96,9 +95,7 @@ class TestFieldMapping:
 
     def test_transform_enum_unknown_class_passthrough(self) -> None:
         mappings = [
-            FieldMapping(
-                source="Val", target="val", transform="enum:NonExistentEnum"
-            ),
+            FieldMapping(source="Val", target="val", transform="enum:NonExistentEnum"),
         ]
         result = apply_mappings([{"Val": "test"}], mappings)
         assert result == [{"val": "test"}]
@@ -271,28 +268,45 @@ class TestFileConnectorExcel:
     def test_excel_import_error(self, tmp_path: Path) -> None:
         xlsx_file = tmp_path / "data.xlsx"
         xlsx_file.write_bytes(b"fake")
-        with pytest.raises(ImportError, match="openpyxl"):
-            # Mock openpyxl as unavailable
-            with patch.dict("sys.modules", {"openpyxl": None}):
-                FileConnector.parse(xlsx_file)
+        with (
+            pytest.raises(ImportError, match="openpyxl"),
+            patch.dict("sys.modules", {"openpyxl": None}),
+        ):
+            FileConnector.parse(xlsx_file)
 
 
 class TestFileConnectorParquet:
     def test_parquet_import_error(self, tmp_path: Path) -> None:
         pq_file = tmp_path / "data.parquet"
         pq_file.write_bytes(b"fake")
-        with pytest.raises(ImportError, match="pyarrow"):
-            with patch.dict("sys.modules", {"pyarrow": None, "pyarrow.parquet": None}):
-                FileConnector.parse(pq_file)
+        with (
+            pytest.raises(ImportError, match="pyarrow"),
+            patch.dict(
+                "sys.modules",
+                {"pyarrow": None, "pyarrow.parquet": None},
+            ),
+        ):
+            FileConnector.parse(pq_file)
 
 
 # -- SalesforceConnector tests --
 
 
+def _trigger_import_error() -> None:
+    """Helper to trigger Salesforce import error (single statement for PT012)."""
+    from simpli_core.connectors.salesforce import SalesforceConnector
+
+    SalesforceConnector(
+        instance_url="https://test.salesforce.com",
+        client_id="id",
+        client_secret="secret",
+    )
+
+
 class TestSalesforceConnector:
     """Tests for the hardened SalesforceConnector."""
 
-    def _make_connector(self) -> "SalesforceConnector":
+    def _make_connector(self) -> Any:
         """Create a SalesforceConnector without calling __init__."""
         from simpli_core.connectors.salesforce import SalesforceConnector
 
@@ -303,16 +317,11 @@ class TestSalesforceConnector:
         return connector
 
     def test_salesforce_import_error(self) -> None:
-        with patch.dict(
-            "sys.modules", {"simple_salesforce": None}
-        ), pytest.raises(ImportError, match="simple-salesforce"):
-            from simpli_core.connectors.salesforce import SalesforceConnector
-
-            SalesforceConnector(
-                instance_url="https://test.salesforce.com",
-                client_id="id",
-                client_secret="secret",
-            )
+        with (
+            patch.dict("sys.modules", {"simple_salesforce": None}),
+            pytest.raises(ImportError, match="simple-salesforce"),
+        ):
+            _trigger_import_error()
 
     def test_configuration_error_empty_url(self) -> None:
         from simpli_core.connectors.errors import ConfigurationError
@@ -510,9 +519,7 @@ class TestSalesforceConnector:
         }
 
         result = connector.update_case("500xx", {"Status": "Closed"})
-        connector.sf.Case.update.assert_called_once_with(
-            "500xx", {"Status": "Closed"}
-        )
+        connector.sf.Case.update.assert_called_once_with("500xx", {"Status": "Closed"})
         assert result["Status"] == "Closed"
 
     def test_update_ticket_is_alias(self) -> None:
@@ -521,9 +528,7 @@ class TestSalesforceConnector:
         connector.sf.Case.get.return_value = {"Id": "500xx"}
 
         connector.update_ticket("500xx", {"Priority": "High"})
-        connector.sf.Case.update.assert_called_once_with(
-            "500xx", {"Priority": "High"}
-        )
+        connector.sf.Case.update.assert_called_once_with("500xx", {"Priority": "High"})
 
     def test_update_case_wraps_errors(self) -> None:
         from simpli_core.connectors.errors import PlatformAPIError
@@ -639,9 +644,7 @@ class TestPreserveUnmapped:
                 "SLA_Level__c": "Gold",
             }
         ]
-        result = apply_mappings(
-            records, CASE_TO_TICKET, preserve_unmapped=True
-        )
+        result = apply_mappings(records, CASE_TO_TICKET, preserve_unmapped=True)
         assert result[0]["subject"] == "Help"
         assert result[0]["custom_fields"] == {
             "Product_Line__c": "Enterprise",
@@ -738,16 +741,24 @@ class TestFieldConfig:
         )
 
         with patch.dict("os.environ", {"SIMPLI_CONFIG_DIR": str(tmp_path)}):
-            save_field_config(FieldConfig(
-                platform="salesforce", selected_fields=["A__c"],
-            ))
-            save_field_config(FieldConfig(
-                platform="zendesk", selected_fields=["B"],
-            ))
+            save_field_config(
+                FieldConfig(
+                    platform="salesforce",
+                    selected_fields=["A__c"],
+                )
+            )
+            save_field_config(
+                FieldConfig(
+                    platform="zendesk",
+                    selected_fields=["B"],
+                )
+            )
             sf = load_field_config("salesforce")
             zd = load_field_config("zendesk")
-            assert sf is not None and sf.selected_fields == ["A__c"]
-            assert zd is not None and zd.selected_fields == ["B"]
+            assert sf is not None
+            assert sf.selected_fields == ["A__c"]
+            assert zd is not None
+            assert zd.selected_fields == ["B"]
 
 
 # -- Prompt context builder tests --
@@ -784,9 +795,7 @@ class TestBuildRecordContext:
 
     def test_custom_primary_fields(self) -> None:
         record = {"title": "My Title", "body": "My Body"}
-        result = build_record_context(
-            record, primary_fields=["title", "body"]
-        )
+        result = build_record_context(record, primary_fields=["title", "body"])
         assert "Title: My Title" in result
         assert "Body: My Body" in result
 
@@ -794,7 +803,7 @@ class TestBuildRecordContext:
         custom = {f"field_{i}": f"val_{i}" for i in range(30)}
         record = {"subject": "Test", "custom_fields": custom}
         result = build_record_context(record, max_custom_fields=5)
-        lines = [l for l in result.split("\n") if l.startswith("  ")]
+        lines = [line for line in result.split("\n") if line.startswith("  ")]
         assert len(lines) == 5
 
     def test_empty_record(self) -> None:

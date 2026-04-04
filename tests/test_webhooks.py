@@ -55,9 +55,7 @@ class TestSignatures:
     def test_hubspot_v3(self) -> None:
         payload = b'{"event": "ticket.creation"}'
         secret = "hs-secret"
-        expected = hashlib.sha256(
-            secret.encode("utf-8") + payload
-        ).hexdigest()
+        expected = hashlib.sha256(secret.encode("utf-8") + payload).hexdigest()
         assert verify_signature("hubspot", payload, expected, secret)
 
     def test_jira_valid(self) -> None:
@@ -131,20 +129,24 @@ class TestNormalizePayload:
 
 class TestDetectEventType:
     def test_event_field(self) -> None:
-        assert _detect_event_type("any", {"event": "ticket.created"}) == "ticket.created"
+        assert (
+            _detect_event_type("any", {"event": "ticket.created"}) == "ticket.created"
+        )
 
     def test_type_field(self) -> None:
         assert _detect_event_type("any", {"type": "notification"}) == "notification"
 
     def test_intercom_topic(self) -> None:
-        assert _detect_event_type(
-            "intercom", {"topic": "conversation.user.replied"}
-        ) == "conversation.user.replied"
+        assert (
+            _detect_event_type("intercom", {"topic": "conversation.user.replied"})
+            == "conversation.user.replied"
+        )
 
     def test_jira_webhook_event(self) -> None:
-        assert _detect_event_type(
-            "jira", {"webhookEvent": "jira:issue_updated"}
-        ) == "jira:issue_updated"
+        assert (
+            _detect_event_type("jira", {"webhookEvent": "jira:issue_updated"})
+            == "jira:issue_updated"
+        )
 
     def test_unknown(self) -> None:
         assert _detect_event_type("any", {"data": 123}) == "unknown"
@@ -164,9 +166,7 @@ class TestWebhookRouter:
     ) -> TestClient:
         events = received_events
 
-        async def on_event(
-            event_type: str, records: list[dict[str, Any]]
-        ) -> None:
+        async def on_event(event_type: str, records: list[dict[str, Any]]) -> None:
             events.append((event_type, records))
 
         app = FastAPI()
@@ -270,9 +270,7 @@ class TestWebhookRouter:
         client = TestClient(app)
 
         payload = json.dumps({"ticket": {"id": 1}}).encode()
-        sig = hmac.new(
-            secret.encode("utf-8"), payload, hashlib.sha256
-        ).hexdigest()
+        sig = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
 
         resp = client.post(
             "/api/v1/webhook/zendesk",

@@ -140,7 +140,9 @@ class FileConnector:
         if len(rows) < 2:  # noqa: PLR2004
             return []
 
-        headers = [str(h) if h is not None else f"col_{i}" for i, h in enumerate(rows[0])]
+        headers = [
+            str(h) if h is not None else f"col_{i}" for i, h in enumerate(rows[0])
+        ]
         records: list[dict[str, Any]] = []
         for row in rows[1:]:
             record = dict(zip(headers, row))

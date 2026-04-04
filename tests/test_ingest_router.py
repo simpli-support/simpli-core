@@ -66,10 +66,12 @@ class TestFileIngest:
 
     def test_csv_with_custom_mappings(self, client: TestClient) -> None:
         csv = "title,body\nHelp,Details\n"
-        mappings = json.dumps([
-            {"source": "title", "target": "subject"},
-            {"source": "body", "target": "description"},
-        ])
+        mappings = json.dumps(
+            [
+                {"source": "title", "target": "subject"},
+                {"source": "body", "target": "description"},
+            ]
+        )
         file = io.BytesIO(csv.encode())
         resp = client.post(
             "/api/v1/ingest",
@@ -130,9 +132,7 @@ class TestHelpers:
             salesforce_client_id = "id123"
             salesforce_client_secret = "secret456"
 
-        merged = _merge_settings_credentials(
-            "salesforce", {}, FakeSettings()
-        )
+        merged = _merge_settings_credentials("salesforce", {}, FakeSettings())
         assert merged["instance_url"] == "https://test.salesforce.com"
         assert merged["client_id"] == "id123"
 

@@ -101,7 +101,6 @@ class FreshdeskConnector(BaseConnector):
             return self._put(f"/api/v2/tickets/{ticket_id}", json=fields)
         return {}
 
-
     def describe_fields(
         self,
         object_type: str = "ticket",
@@ -115,7 +114,7 @@ class FreshdeskConnector(BaseConnector):
         for field in raw_fields:
             picklist_vals = None
             choices = field.get("choices")
-            if choices and isinstance(choices, (list, dict)):
+            if choices and isinstance(choices, list | dict):
                 if isinstance(choices, dict):
                     picklist_vals = list(choices.keys())
                 else:

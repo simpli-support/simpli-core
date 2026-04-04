@@ -151,9 +151,7 @@ def _register_error_handlers(app: FastAPI) -> None:
     """Register shared exception handlers on the app."""
 
     @app.exception_handler(SimpliError)
-    async def simpli_error_handler(
-        request: Request, exc: SimpliError
-    ) -> JSONResponse:
+    async def simpli_error_handler(request: Request, exc: SimpliError) -> JSONResponse:
         request_id = request.headers.get("X-Request-ID")
         return JSONResponse(
             status_code=exc.status_code,
@@ -187,9 +185,7 @@ def _register_error_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(Exception)
-    async def unhandled_error_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
+    async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
         request_id = request.headers.get("X-Request-ID")
         logger.exception("unhandled_error", exc_info=exc)
         return JSONResponse(

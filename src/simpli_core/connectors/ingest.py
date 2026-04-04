@@ -10,16 +10,15 @@ from __future__ import annotations
 import json as json_module
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
-
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, File, Form, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from simpli_core.connectors.file_parser import FileConnector
 from simpli_core.connectors.field_config import load_field_config
+from simpli_core.connectors.file_parser import FileConnector
 from simpli_core.connectors.mapping import (
     DEFAULT_ARTICLE_MAPPINGS,
     DEFAULT_TICKET_MAPPINGS,
@@ -69,9 +68,7 @@ class PlatformIngestRequest(BaseModel):
         default="",
         description="Platform-specific query filter (SOQL WHERE, JQL, etc.)",
     )
-    limit: int = Field(
-        default=100, ge=1, le=10000, description="Max records to fetch"
-    )
+    limit: int = Field(default=100, ge=1, le=10000, description="Max records to fetch")
     mappings: list[FieldMapping] | None = Field(
         default=None,
         description="Custom field mappings (uses platform defaults if not provided)",
@@ -118,11 +115,11 @@ def create_ingest_router(
     """
     router = APIRouter(prefix="/api/v1", tags=["ingest"])
 
+    _file_upload = File(..., description="File to ingest (CSV, JSON, JSONL)")
+
     @router.post("/ingest", response_model=IngestResult)
     async def ingest_file(
-        file: UploadFile = File(
-            ..., description="File to ingest (CSV, JSON, JSONL)"
-        ),
+        file: UploadFile = _file_upload,
         mappings: str | None = Form(
             default=None, description="JSON array of field mappings"
         ),
@@ -145,20 +142,13 @@ def create_ingest_router(
             extra={"filename": file.filename, "size": len(content)},
         )
 
-        records = FileConnector.parse(
-            file.file, format=_detect_format(file.filename)
-        )
+        records = FileConnector.parse(file.file, format=_detect_format(file.filename))
 
         field_mappings: list[FieldMapping] | None = None
         if mappings:
-            field_mappings = [
-                FieldMapping(**m) for m in json_module.loads(mappings)
-            ]
+            field_mappings = [FieldMapping(**m) for m in json_module.loads(mappings)]
 
-        if field_mappings:
-            mapped = apply_mappings(records, field_mappings)
-        else:
-            mapped = records
+        mapped = apply_mappings(records, field_mappings) if field_mappings else records
 
         return await _run_processing(
             source=file.filename or "upload",
@@ -212,9 +202,7 @@ def create_ingest_router(
         )
 
         # Fetch records
-        fetch_method = (
-            "get_articles" if default_object == "articles" else "get_tickets"
-        )
+        fetch_method = "get_articles" if default_object == "articles" else "get_tickets"
         records = getattr(connector, fetch_method)(
             where=request.query_filter, limit=request.limit
         )
@@ -224,7 +212,9 @@ def create_ingest_router(
 
         if request.mappings:
             mapped = apply_mappings(
-                records, request.mappings, preserve_unmapped=preserve,
+                records,
+                request.mappings,
+                preserve_unmapped=preserve,
             )
         else:
             mapping_lookup = (
@@ -239,11 +229,15 @@ def create_ingest_router(
             if default_mappings and field_config and field_config.custom_mappings:
                 effective = list(default_mappings) + field_config.custom_mappings
                 mapped = apply_mappings(
-                    records, effective, preserve_unmapped=preserve,
+                    records,
+                    effective,
+                    preserve_unmapped=preserve,
                 )
             elif default_mappings:
                 mapped = apply_mappings(
-                    records, default_mappings, preserve_unmapped=preserve,
+                    records,
+                    default_mappings,
+                    preserve_unmapped=preserve,
                 )
             else:
                 mapped = records
@@ -275,9 +269,7 @@ def _detect_format(filename: str | None) -> str:
     """Detect file format from filename."""
     if not filename:
         return "csv"
-    suffix = (
-        filename.rsplit(".", 1)[-1].lower() if "." in filename else "csv"
-    )
+    suffix = filename.rsplit(".", 1)[-1].lower() if "." in filename else "csv"
     return suffix if suffix in FileConnector.SUPPORTED_FORMATS else "csv"
 
 
@@ -286,9 +278,7 @@ async def _run_processing(
     source: str,
     records: list[dict[str, Any]],
     mapped: list[dict[str, Any]],
-    process_fn: Callable[
-        [list[dict[str, Any]]], Awaitable[list[dict[str, Any]]]
-    ],
+    process_fn: Callable[[list[dict[str, Any]]], Awaitable[list[dict[str, Any]]]],
 ) -> IngestResult:
     """Run the service's processing function and build the result."""
     try:

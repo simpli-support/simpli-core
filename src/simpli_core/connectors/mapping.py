@@ -201,15 +201,9 @@ CASE_TO_TICKET: list[FieldMapping] = [
     FieldMapping(source="CaseNumber", target="id"),
     FieldMapping(source="Subject", target="subject"),
     FieldMapping(source="Description", target="description", default=""),
-    FieldMapping(
-        source="Status", target="status", transform="enum:TicketStatus"
-    ),
-    FieldMapping(
-        source="Priority", target="priority", transform="enum:Priority"
-    ),
-    FieldMapping(
-        source="Origin", target="channel", transform="enum:Channel"
-    ),
+    FieldMapping(source="Status", target="status", transform="enum:TicketStatus"),
+    FieldMapping(source="Priority", target="priority", transform="enum:Priority"),
+    FieldMapping(source="Origin", target="channel", transform="enum:Channel"),
     FieldMapping(source="ContactId", target="customer_id", default="unknown"),
     FieldMapping(source="CreatedDate", target="created_at"),
     FieldMapping(source="ClosedDate", target="closed_at"),
@@ -247,15 +241,9 @@ ZENDESK_TICKET_TO_TICKET: list[FieldMapping] = [
     FieldMapping(source="id", target="id"),
     FieldMapping(source="subject", target="subject"),
     FieldMapping(source="description", target="description", default=""),
-    FieldMapping(
-        source="status", target="status", transform="enum:TicketStatus"
-    ),
-    FieldMapping(
-        source="priority", target="priority", transform="enum:Priority"
-    ),
-    FieldMapping(
-        source="via.channel", target="channel", transform="enum:Channel"
-    ),
+    FieldMapping(source="status", target="status", transform="enum:TicketStatus"),
+    FieldMapping(source="priority", target="priority", transform="enum:Priority"),
+    FieldMapping(source="via.channel", target="channel", transform="enum:Channel"),
     FieldMapping(source="requester_id", target="customer_id"),
 ]
 
@@ -278,15 +266,9 @@ ZENDESK_ARTICLE_TO_ARTICLE: list[FieldMapping] = [
 FRESHDESK_TICKET_TO_TICKET: list[FieldMapping] = [
     FieldMapping(source="id", target="id"),
     FieldMapping(source="subject", target="subject"),
-    FieldMapping(
-        source="description_text", target="description", default=""
-    ),
-    FieldMapping(
-        source="status", target="status", transform="freshdesk_status"
-    ),
-    FieldMapping(
-        source="priority", target="priority", transform="freshdesk_priority"
-    ),
+    FieldMapping(source="description_text", target="description", default=""),
+    FieldMapping(source="status", target="status", transform="freshdesk_status"),
+    FieldMapping(source="priority", target="priority", transform="freshdesk_priority"),
     FieldMapping(source="source", target="channel", transform="enum:Channel"),
     FieldMapping(source="requester_id", target="customer_id"),
 ]
@@ -300,7 +282,9 @@ INTERCOM_CONVERSATION_TO_TICKET: list[FieldMapping] = [
     FieldMapping(source="source.body", target="description", default=""),
     FieldMapping(source="state", target="status", transform="enum:TicketStatus"),
     FieldMapping(source="priority", target="priority", transform="enum:Priority"),
-    FieldMapping(source="contacts.contacts.0.id", target="customer_id", default="unknown"),
+    FieldMapping(
+        source="contacts.contacts.0.id", target="customer_id", default="unknown"
+    ),
 ]
 
 
@@ -310,9 +294,7 @@ HUBSPOT_TICKET_TO_TICKET: list[FieldMapping] = [
     FieldMapping(source="id", target="id"),
     FieldMapping(source="subject", target="subject", default="(no subject)"),
     FieldMapping(source="content", target="description", default=""),
-    FieldMapping(
-        source="hs_pipeline_stage", target="status", transform="lower"
-    ),
+    FieldMapping(source="hs_pipeline_stage", target="status", transform="lower"),
     FieldMapping(
         source="hs_ticket_priority", target="priority", transform="enum:Priority"
     ),
@@ -325,12 +307,8 @@ JIRA_ISSUE_TO_TICKET: list[FieldMapping] = [
     FieldMapping(source="key", target="id"),
     FieldMapping(source="summary", target="subject"),
     FieldMapping(source="description", target="description", default=""),
-    FieldMapping(
-        source="status", target="status", transform="enum:TicketStatus"
-    ),
-    FieldMapping(
-        source="priority", target="priority", transform="enum:Priority"
-    ),
+    FieldMapping(source="status", target="status", transform="enum:TicketStatus"),
+    FieldMapping(source="priority", target="priority", transform="enum:Priority"),
     FieldMapping(source="reporter_id", target="customer_id", default="unknown"),
 ]
 
@@ -341,12 +319,8 @@ SERVICENOW_INCIDENT_TO_TICKET: list[FieldMapping] = [
     FieldMapping(source="number", target="id"),
     FieldMapping(source="short_description", target="subject"),
     FieldMapping(source="description", target="description", default=""),
-    FieldMapping(
-        source="state", target="status", transform="servicenow_state"
-    ),
-    FieldMapping(
-        source="priority", target="priority", transform="servicenow_priority"
-    ),
+    FieldMapping(source="state", target="status", transform="servicenow_state"),
+    FieldMapping(source="priority", target="priority", transform="servicenow_priority"),
     FieldMapping(source="caller_id", target="customer_id", default="unknown"),
 ]
 

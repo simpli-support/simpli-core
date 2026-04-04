@@ -57,9 +57,7 @@ def create_webhook_router(
         if secret and require_signature:
             header_name = SIGNATURE_HEADERS.get(platform, "")
             signature = request.headers.get(header_name, "")
-            if not signature or not verify_signature(
-                platform, body, signature, secret
-            ):
+            if not signature or not verify_signature(platform, body, signature, secret):
                 logger.warning(
                     "webhook_signature_invalid",
                     extra={"platform": platform},

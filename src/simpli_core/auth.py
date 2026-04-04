@@ -13,12 +13,14 @@ from fastapi.responses import JSONResponse
 
 logger = structlog.get_logger(__name__)
 
-DEFAULT_EXCLUDE_PATHS = frozenset({
-    "/health",
-    "/docs",
-    "/redoc",
-    "/openapi.json",
-})
+DEFAULT_EXCLUDE_PATHS = frozenset(
+    {
+        "/health",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+    }
+)
 
 
 def add_api_key_middleware(

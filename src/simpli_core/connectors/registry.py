@@ -24,10 +24,7 @@ def get_connector(name: str) -> type[BaseConnector]:
     """
     if name not in _CONNECTORS:
         available = ", ".join(sorted(_CONNECTORS.keys())) or "(none)"
-        msg = (
-            f"Unknown platform: {name!r}. "
-            f"Available connectors: {available}"
-        )
+        msg = f"Unknown platform: {name!r}. Available connectors: {available}"
         raise KeyError(msg)
     return _CONNECTORS[name]
 

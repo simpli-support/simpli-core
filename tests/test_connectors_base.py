@@ -234,7 +234,9 @@ class TestDotNotation:
 class TestPlatformTransforms:
     def test_freshdesk_status(self) -> None:
         mappings = [
-            FieldMapping(source="status", target="status", transform="freshdesk_status"),
+            FieldMapping(
+                source="status", target="status", transform="freshdesk_status"
+            ),
         ]
         records = [{"status": 2}, {"status": 3}, {"status": 4}, {"status": 5}]
         result = apply_mappings(records, mappings)
@@ -258,9 +260,7 @@ class TestPlatformTransforms:
 
     def test_servicenow_state(self) -> None:
         mappings = [
-            FieldMapping(
-                source="state", target="status", transform="servicenow_state"
-            ),
+            FieldMapping(source="state", target="status", transform="servicenow_state"),
         ]
         records = [{"state": 1}, {"state": 2}, {"state": 6}, {"state": 7}]
         result = apply_mappings(records, mappings)
@@ -286,7 +286,9 @@ class TestPlatformTransforms:
 
     def test_unknown_freshdesk_value_passthrough(self) -> None:
         mappings = [
-            FieldMapping(source="status", target="status", transform="freshdesk_status"),
+            FieldMapping(
+                source="status", target="status", transform="freshdesk_status"
+            ),
         ]
         result = apply_mappings([{"status": 99}], mappings)
         assert result[0]["status"] == "99"  # Passes through as string

@@ -48,8 +48,7 @@ class HubSpotConnector(BaseConnector):
         config = load_field_config("hubspot", "ticket")
         if config:
             extra = ",".join(
-                f for f in config.selected_fields
-                if f not in base_properties
+                f for f in config.selected_fields if f not in base_properties
             )
             properties = f"{base_properties},{extra}" if extra else base_properties
         else:
@@ -92,9 +91,7 @@ class HubSpotConnector(BaseConnector):
     ) -> list[dict[str, Any]]:
         """Fetch engagement notes associated with a ticket."""
         # Get associated notes via associations API
-        data = self._get(
-            f"/crm/v3/objects/tickets/{ticket_id}/associations/notes"
-        )
+        data = self._get(f"/crm/v3/objects/tickets/{ticket_id}/associations/notes")
         results = data.get("results", [])
 
         notes: list[dict[str, Any]] = []
@@ -142,7 +139,6 @@ class HubSpotConnector(BaseConnector):
             flat.update(props)
         return flat
 
-
     def describe_fields(
         self,
         object_type: str = "ticket",
@@ -164,13 +160,17 @@ class HubSpotConnector(BaseConnector):
                 FieldDescriptor(
                     name=field.get("name", ""),
                     label=field.get("label", field.get("name", "")),
-                    field_type="picklist" if picklist_vals else field.get("type", "string"),
+                    field_type="picklist"
+                    if picklist_vals
+                    else field.get("type", "string"),
                     category=(
                         FieldCategory.STANDARD
                         if field.get("hubspotDefined", False)
                         else FieldCategory.CUSTOM
                     ),
-                    required=field.get("required", False) if not field.get("hubspotDefined") else False,
+                    required=field.get("required", False)
+                    if not field.get("hubspotDefined")
+                    else False,
                     picklist_values=picklist_vals,
                     description=field.get("description", ""),
                 )
