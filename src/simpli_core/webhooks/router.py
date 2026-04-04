@@ -15,7 +15,6 @@ from fastapi.responses import JSONResponse
 
 from simpli_core.connectors.mapping import (
     DEFAULT_TICKET_MAPPINGS,
-    FieldMapping,
     apply_mappings,
 )
 from simpli_core.webhooks.signatures import SIGNATURE_HEADERS, verify_signature
@@ -124,7 +123,7 @@ def _normalize_payload(
 ) -> list[dict[str, Any]]:
     """Normalize a webhook payload into a list of records."""
     if isinstance(payload, list):
-        return payload  # type: ignore[return-value]
+        return payload
 
     # Platform-specific extraction
     if platform == "zendesk":
@@ -147,9 +146,6 @@ def _normalize_payload(
         return [payload]
 
     if platform == "hubspot":
-        # HubSpot sends arrays of events
-        if isinstance(payload, list):
-            return payload  # type: ignore[return-value]
         if "object" in payload:
             return [payload["object"]]
         return [payload]
@@ -167,7 +163,8 @@ def _normalize_payload(
 
     if platform == "salesforce":
         if "sobjects" in payload:
-            return payload["sobjects"]
+            sobjects: list[dict[str, Any]] = payload["sobjects"]
+            return sobjects
         return [payload]
 
     return [payload]
@@ -185,13 +182,18 @@ def _detect_event_type(platform: str, payload: dict[str, Any]) -> str:
         "topic",
     ]
     for field in event_fields:
-        if field in payload and isinstance(payload[field], str):
-            return payload[field]
+        val = payload.get(field)
+        if isinstance(val, str):
+            return val
 
     # Platform-specific
-    if platform == "intercom" and "topic" in payload:
-        return payload["topic"]
-    if platform == "jira" and "webhookEvent" in payload:
-        return payload["webhookEvent"]
+    if platform == "intercom":
+        topic = payload.get("topic")
+        if isinstance(topic, str):
+            return topic
+    if platform == "jira":
+        webhook_event = payload.get("webhookEvent")
+        if isinstance(webhook_event, str):
+            return webhook_event
 
     return "unknown"

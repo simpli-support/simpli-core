@@ -7,6 +7,7 @@ so that services can avoid duplicating boilerplate.
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, FastAPI, Request, Response
@@ -76,7 +77,7 @@ def create_ops_router(cost_tracker: CostTracker | None = None) -> APIRouter:
     if cost_tracker is not None:
 
         @router.get("/usage")
-        async def usage() -> dict:  # type: ignore[no-untyped-def]
+        async def usage() -> dict[str, Any]:
             return cost_tracker.summary()
 
     return router

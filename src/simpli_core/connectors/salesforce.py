@@ -63,7 +63,7 @@ class SalesforceConnector(BaseConnector):
             raise ConfigurationError("client_secret is required", platform="salesforce")
 
         try:
-            from simple_salesforce import Salesforce
+            from simple_salesforce import Salesforce  # type: ignore[attr-defined]
         except ImportError:
             msg = (
                 "Salesforce support requires simple-salesforce. "
@@ -260,8 +260,9 @@ class SalesforceConnector(BaseConnector):
     ) -> dict[str, Any]:
         """Update a Case record and return the updated fields."""
         try:
-            self.sf.Case.update(case_id, fields)
-            return self.sf.Case.get(case_id)
+            self.sf.Case.update(case_id, fields)  # type: ignore[operator]
+            result: dict[str, Any] = self.sf.Case.get(case_id)  # type: ignore[operator]
+            return result
         except Exception as exc:
             raise PlatformAPIError(
                 f"Failed to update case {case_id}: {exc}",
@@ -285,7 +286,7 @@ class SalesforceConnector(BaseConnector):
     ) -> dict[str, Any]:
         """Add a CaseComment to a case."""
         try:
-            result = self.sf.CaseComment.create(
+            result = self.sf.CaseComment.create(  # type: ignore[operator]
                 {
                     "ParentId": case_id,
                     "CommentBody": body,
@@ -405,4 +406,4 @@ class SalesforceConnector(BaseConnector):
 
 
 # Register with the connector registry
-register("salesforce", SalesforceConnector)  # type: ignore[arg-type]
+register("salesforce", SalesforceConnector)

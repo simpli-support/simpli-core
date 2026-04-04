@@ -94,7 +94,7 @@ def create_setup_router(*, settings: Any = None) -> APIRouter:
             )
 
         try:
-            connector = connector_cls(**creds)
+            connector = connector_cls(**creds)  # type: ignore[arg-type]
             schema = connector.describe_fields(request.object_type)
             if hasattr(connector, "close"):
                 connector.close()
@@ -150,7 +150,7 @@ def create_setup_router(*, settings: Any = None) -> APIRouter:
     async def remove_config(
         platform: str,
         object_type: str = "ticket",
-    ) -> dict[str, str]:
+    ) -> dict[str, str] | JSONResponse:
         """Remove a field configuration."""
         deleted = delete_field_config(platform, object_type)
         if not deleted:

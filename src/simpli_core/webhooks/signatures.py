@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ def _verify_salesforce(
     return _verify_hmac_sha256(payload, signature, secret)
 
 
-_VERIFIERS: dict[str, type[None] | callable] = {  # type: ignore[type-arg]
+_VERIFIERS: dict[str, Callable[[bytes, str, str], bool]] = {
     "zendesk": _verify_hmac_sha256,
     "freshdesk": _verify_hmac_sha256,
     "intercom": _verify_hmac_sha256,

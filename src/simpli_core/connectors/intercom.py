@@ -70,7 +70,8 @@ class IntercomConnector(BaseConnector):
         """Fetch conversation parts (messages) for a conversation."""
         data = self._get(f"/conversations/{ticket_id}")
         parts = data.get("conversation_parts", {})
-        return parts.get("conversation_parts", [])
+        result: list[dict[str, Any]] = parts.get("conversation_parts", [])
+        return result
 
     def get_articles(
         self,

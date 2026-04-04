@@ -14,6 +14,7 @@ from simpli_core.connectors.errors import (
     PlatformAPIError,
     RateLimitError,
 )
+from simpli_core.connectors.mapping import ObjectSchema
 
 logger = logging.getLogger(__name__)
 
@@ -221,13 +222,12 @@ class BaseConnector:
     def describe_fields(
         self,
         object_type: str = "ticket",
-    ) -> dict[str, Any]:
+    ) -> ObjectSchema:
         """Discover available fields for a platform object type.
 
-        Returns an :class:`~simpli_core.connectors.mapping.ObjectSchema`
-        serialised as a dict. Subclasses should import and return the
-        Pydantic model directly; the base implementation raises
-        ``NotImplementedError``.
+        Returns an :class:`~simpli_core.connectors.mapping.ObjectSchema`.
+        Subclasses should import and return the Pydantic model directly;
+        the base implementation raises ``NotImplementedError``.
         """
         msg = f"{self.platform} connector does not support describe_fields()"
         raise NotImplementedError(msg)

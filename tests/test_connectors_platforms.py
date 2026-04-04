@@ -1,10 +1,11 @@
-"""Tests for platform connectors (Zendesk, Freshdesk, Intercom, HubSpot, Jira, ServiceNow)."""
+"""Tests for platform connectors.
+
+Covers Zendesk, Freshdesk, Intercom, HubSpot, Jira, ServiceNow.
+"""
 
 from __future__ import annotations
 
 from unittest.mock import MagicMock
-
-import pytest
 
 from simpli_core.connectors.freshdesk import FreshdeskConnector
 from simpli_core.connectors.hubspot import HubSpotConnector
@@ -19,7 +20,6 @@ from simpli_core.connectors.mapping import (
     JIRA_ISSUE_TO_TICKET,
     SERVICENOW_INCIDENT_TO_TICKET,
     ZENDESK_TICKET_TO_TICKET,
-    FieldMapping,
     apply_mappings,
 )
 from simpli_core.connectors.registry import get_connector, list_platforms
@@ -33,7 +33,6 @@ from simpli_core.connectors.settings import (
     ZendeskSettings,
 )
 from simpli_core.connectors.zendesk import ZendeskConnector
-
 
 # -- Registry tests --
 

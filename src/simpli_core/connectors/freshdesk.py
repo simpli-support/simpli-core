@@ -70,7 +70,8 @@ class FreshdeskConnector(BaseConnector):
         data = self._get(f"/api/v2/tickets/{ticket_id}/conversations")
         if isinstance(data, list):
             return data
-        return data.get("results", [])
+        result: list[dict[str, Any]] = data.get("results", [])
+        return result
 
     def get_articles(
         self,

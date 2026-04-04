@@ -256,12 +256,12 @@ class TestFileConnectorFormatDetection:
         # File has .txt extension but we tell it to parse as CSV
         txt_file = tmp_path / "data.txt"
         txt_file.write_text("x,y\n1,2\n")
-        records = FileConnector.parse(txt_file, format="csv")
+        records = FileConnector.parse(txt_file, fmt="csv")
         assert records == [{"x": "1", "y": "2"}]
 
     def test_unsupported_format_raises(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="Unsupported format"):
-            FileConnector.parse(tmp_path / "x.csv", format="xml")
+            FileConnector.parse(tmp_path / "x.csv", fmt="xml")
 
 
 class TestFileConnectorExcel:

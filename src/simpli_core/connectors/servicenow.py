@@ -92,7 +92,8 @@ class ServiceNowConnector(BaseConnector):
             params["sysparm_query"] = "ORDERBYDESCopened_at"
 
         data = self._get("/api/now/table/incident", params=params)
-        return data.get("result", [])
+        result: list[dict[str, Any]] = data.get("result", [])
+        return result
 
     def get_customers(
         self,
@@ -107,7 +108,8 @@ class ServiceNowConnector(BaseConnector):
         if where:
             params["sysparm_query"] = where
         data = self._get("/api/now/table/sys_user", params=params)
-        return data.get("result", [])
+        result: list[dict[str, Any]] = data.get("result", [])
+        return result
 
     def get_messages(
         self,
@@ -123,7 +125,8 @@ class ServiceNowConnector(BaseConnector):
             "sysparm_limit": 200,
         }
         data = self._get("/api/now/table/sys_journal_field", params=params)
-        return data.get("result", [])
+        result: list[dict[str, Any]] = data.get("result", [])
+        return result
 
     def get_articles(
         self,
@@ -144,7 +147,8 @@ class ServiceNowConnector(BaseConnector):
             params["sysparm_query"] = "active=true^ORDERBYDESCsys_created_on"
 
         data = self._get("/api/now/table/kb_knowledge", params=params)
-        return data.get("result", [])
+        result: list[dict[str, Any]] = data.get("result", [])
+        return result
 
     def update_ticket(
         self,

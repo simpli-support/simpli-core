@@ -83,7 +83,7 @@ def setup(
     typer.echo(f"\nConnecting to {platform}...")
     try:
         connector_cls = get_connector(platform)
-        connector = connector_cls(**creds)
+        connector = connector_cls(**creds)  # type: ignore[arg-type]
     except Exception as exc:
         typer.echo(f"Failed to connect: {exc}", err=True)
         raise typer.Exit(code=1) from exc
@@ -211,7 +211,7 @@ def setup(
     # Offer test
     if typer.confirm("\nTest the configuration by fetching 1 record?", default=False):
         try:
-            connector = connector_cls(**creds)
+            connector = connector_cls(**creds)  # type: ignore[arg-type]
             fetch = "get_articles" if object_type == "article" else "get_tickets"
             records = getattr(connector, fetch)(limit=1)
             if hasattr(connector, "close"):

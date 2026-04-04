@@ -72,7 +72,7 @@ def _resolve_enum(enum_path: str, value: str) -> str:
     lowered = value.strip().lower()
     for member in enum_cls:
         if member.value == lowered:
-            return member.value
+            return str(member.value)
     return value
 
 

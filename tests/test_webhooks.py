@@ -18,7 +18,6 @@ from simpli_core.webhooks.router import (
 )
 from simpli_core.webhooks.signatures import verify_signature
 
-
 # -- Signature verification tests --
 
 
@@ -156,11 +155,11 @@ class TestDetectEventType:
 
 
 class TestWebhookRouter:
-    @pytest.fixture()
+    @pytest.fixture
     def received_events(self) -> list[tuple[str, list[dict[str, Any]]]]:
         return []
 
-    @pytest.fixture()
+    @pytest.fixture
     def client(
         self, received_events: list[tuple[str, list[dict[str, Any]]]]
     ) -> TestClient:

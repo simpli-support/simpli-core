@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -17,7 +16,6 @@ from simpli_core.errors import (
     ValidationError,
 )
 from simpli_core.fastapi import _register_error_handlers
-
 
 # -- Error hierarchy tests --
 

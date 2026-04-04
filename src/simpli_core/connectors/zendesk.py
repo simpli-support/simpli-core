@@ -87,7 +87,8 @@ class ZendeskConnector(BaseConnector):
     ) -> list[dict[str, Any]]:
         """Fetch comments for a ticket."""
         data = self._get(f"/api/v2/tickets/{ticket_id}/comments.json")
-        return data.get("comments", [])
+        result: list[dict[str, Any]] = data.get("comments", [])
+        return result
 
     def get_articles(
         self,
@@ -104,7 +105,8 @@ class ZendeskConnector(BaseConnector):
     def get_user(self, user_id: str) -> dict[str, Any]:
         """Fetch a single user by ID."""
         data = self._get(f"/api/v2/users/{user_id}.json")
-        return data.get("user", {})
+        result: dict[str, Any] = data.get("user", {})
+        return result
 
     def update_ticket(
         self,

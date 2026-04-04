@@ -142,7 +142,7 @@ def create_ingest_router(
             extra={"filename": file.filename, "size": len(content)},
         )
 
-        records = FileConnector.parse(file.file, format=_detect_format(file.filename))
+        records = FileConnector.parse(file.file, fmt=_detect_format(file.filename))
 
         field_mappings: list[FieldMapping] | None = None
         if mappings:
@@ -189,7 +189,7 @@ def create_ingest_router(
             )
 
         try:
-            connector = connector_cls(**creds)
+            connector = connector_cls(**creds)  # type: ignore[arg-type]
         except Exception as exc:
             return JSONResponse(  # type: ignore[return-value]
                 status_code=400,

@@ -6,7 +6,7 @@ import csv
 import io
 import json
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, ClassVar
 
 
 class FileConnector:
@@ -16,44 +16,50 @@ class FileConnector:
     Parquet require optional extras (openpyxl and pyarrow respectively).
     """
 
-    SUPPORTED_FORMATS = {"csv", "json", "jsonl", "xlsx", "parquet"}
+    SUPPORTED_FORMATS: ClassVar[set[str]] = {
+        "csv",
+        "json",
+        "jsonl",
+        "xlsx",
+        "parquet",
+    }
 
     @staticmethod
     def parse(
         file: BinaryIO | Path | str,
-        format: str | None = None,
+        fmt: str | None = None,
     ) -> list[dict[str, Any]]:
         """Parse a file into a list of dictionaries.
 
         Args:
             file: A file-like object (binary mode) or a path to a file.
-            format: File format. Auto-detected from extension if not given.
-                    One of: csv, json, jsonl, xlsx, parquet.
+            fmt: File format. Auto-detected from extension if not given.
+                 One of: csv, json, jsonl, xlsx, parquet.
 
         Returns:
             List of dictionaries, one per record.
         """
-        if format is None:
-            format = FileConnector._detect_format(file)
+        if fmt is None:
+            fmt = FileConnector._detect_format(file)
 
-        if format == "csv":
+        if fmt == "csv":
             return FileConnector._parse_csv(file)
-        if format == "json":
+        if fmt == "json":
             return FileConnector._parse_json(file)
-        if format == "jsonl":
+        if fmt == "jsonl":
             return FileConnector._parse_jsonl(file)
-        if format == "xlsx":
+        if fmt == "xlsx":
             return FileConnector._parse_excel(file)
-        if format == "parquet":
+        if fmt == "parquet":
             return FileConnector._parse_parquet(file)
 
-        msg = f"Unsupported format: {format}"
+        msg = f"Unsupported format: {fmt}"
         raise ValueError(msg)
 
     @staticmethod
     def _detect_format(file: BinaryIO | Path | str) -> str:
         """Detect file format from filename/path."""
-        if isinstance(file, (str, Path)):
+        if isinstance(file, str | Path):
             suffix = Path(file).suffix.lower().lstrip(".")
             if suffix in FileConnector.SUPPORTED_FORMATS:
                 return suffix
@@ -72,22 +78,22 @@ class FileConnector:
     @staticmethod
     def _read_text(file: BinaryIO | Path | str) -> str:
         """Read file content as text."""
-        if isinstance(file, (str, Path)):
+        if isinstance(file, str | Path):
             return Path(file).read_text(encoding="utf-8")
         data = file.read()
         if isinstance(data, bytes):
             return data.decode("utf-8")
-        return data  # type: ignore[return-value]
+        return data  # pragma: no cover
 
     @staticmethod
     def _read_bytes(file: BinaryIO | Path | str) -> bytes:
         """Read file content as bytes."""
-        if isinstance(file, (str, Path)):
+        if isinstance(file, str | Path):
             return Path(file).read_bytes()
         data = file.read()
         if isinstance(data, str):
             return data.encode("utf-8")
-        return data  # type: ignore[return-value]
+        return data  # pragma: no cover
 
     @staticmethod
     def _parse_csv(file: BinaryIO | Path | str) -> list[dict[str, Any]]:
@@ -100,12 +106,12 @@ class FileConnector:
         text = FileConnector._read_text(file)
         data = json.loads(text)
         if isinstance(data, list):
-            return data  # type: ignore[return-value]
+            return data
         if isinstance(data, dict):
             # Support {"data": [...]} or {"records": [...]} wrappers
             for key in ("data", "records", "items", "results"):
                 if key in data and isinstance(data[key], list):
-                    return data[key]  # type: ignore[return-value]
+                    return data[key]  # type: ignore[no-any-return]
         msg = "JSON must be a list of objects or contain a data/records array"
         raise ValueError(msg)
 
@@ -137,7 +143,7 @@ class FileConnector:
             return []
 
         rows = list(ws.iter_rows(values_only=True))
-        if len(rows) < 2:  # noqa: PLR2004
+        if len(rows) < 2:
             return []
 
         headers = [
@@ -145,7 +151,7 @@ class FileConnector:
         ]
         records: list[dict[str, Any]] = []
         for row in rows[1:]:
-            record = dict(zip(headers, row))
+            record = dict(zip(headers, row, strict=False))
             records.append(record)
         wb.close()
         return records
@@ -153,7 +159,7 @@ class FileConnector:
     @staticmethod
     def _parse_parquet(file: BinaryIO | Path | str) -> list[dict[str, Any]]:
         try:
-            import pyarrow.parquet as pq
+            import pyarrow.parquet as pq  # type: ignore[import-untyped]
         except ImportError:
             msg = (
                 "Parquet support requires pyarrow. "
@@ -161,9 +167,9 @@ class FileConnector:
             )
             raise ImportError(msg) from None
 
-        if isinstance(file, (str, Path)):
+        if isinstance(file, str | Path):
             table = pq.read_table(str(file))
         else:
             data = file.read()
             table = pq.read_table(io.BytesIO(data))
-        return table.to_pydict()  # type: ignore[return-value]
+        return table.to_pydict()  # type: ignore[no-any-return]

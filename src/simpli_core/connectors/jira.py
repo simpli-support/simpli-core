@@ -90,7 +90,8 @@ class JiraConnector(BaseConnector):
         data = self._get("/rest/api/3/users/search", params=params)
         if isinstance(data, list):
             return data[:limit]
-        return data.get("values", [])[:limit]
+        result: list[dict[str, Any]] = data.get("values", [])
+        return result[:limit]
 
     def get_messages(
         self,
