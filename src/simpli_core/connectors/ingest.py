@@ -19,6 +19,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from simpli_core.connectors.file_parser import FileConnector
+from simpli_core.connectors.field_config import load_field_config
 from simpli_core.connectors.mapping import (
     DEFAULT_ARTICLE_MAPPINGS,
     DEFAULT_TICKET_MAPPINGS,
@@ -218,9 +219,13 @@ def create_ingest_router(
             where=request.query_filter, limit=request.limit
         )
 
-        # Apply mappings
+        # Apply mappings — merge field config custom mappings with defaults
+        preserve = getattr(settings, "preserve_unmapped_fields", False)
+
         if request.mappings:
-            mapped = apply_mappings(records, request.mappings)
+            mapped = apply_mappings(
+                records, request.mappings, preserve_unmapped=preserve,
+            )
         else:
             mapping_lookup = (
                 DEFAULT_ARTICLE_MAPPINGS
@@ -228,8 +233,18 @@ def create_ingest_router(
                 else DEFAULT_TICKET_MAPPINGS
             )
             default_mappings = mapping_lookup.get(platform)
-            if default_mappings:
-                mapped = apply_mappings(records, default_mappings)
+            obj_type = "article" if default_object == "articles" else "ticket"
+            field_config = load_field_config(platform, obj_type)
+
+            if default_mappings and field_config and field_config.custom_mappings:
+                effective = list(default_mappings) + field_config.custom_mappings
+                mapped = apply_mappings(
+                    records, effective, preserve_unmapped=preserve,
+                )
+            elif default_mappings:
+                mapped = apply_mappings(
+                    records, default_mappings, preserve_unmapped=preserve,
+                )
             else:
                 mapped = records
 

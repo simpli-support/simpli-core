@@ -14,7 +14,21 @@ from simpli_core.connectors import (
     get_connector,
     list_platforms,
 )
+from simpli_core.connectors.field_config import (
+    FieldConfig,
+    FieldConfigStore,
+    delete_field_config,
+    load_field_config,
+    save_field_config,
+)
 from simpli_core.connectors.ingest import IngestResult, create_ingest_router
+from simpli_core.connectors.setup_router import create_setup_router
+from simpli_core.connectors.mapping import (
+    FieldCategory,
+    FieldDescriptor,
+    ObjectSchema,
+    ObjectType,
+)
 from simpli_core.auth import add_api_key_middleware
 from simpli_core.errors import (
     AuthenticationError,
@@ -45,7 +59,8 @@ from simpli_core.models import (
     Ticket,
     TicketStatus,
 )
-from simpli_core.settings import SimpliSettings
+from simpli_core.prompt_context import build_record_context
+from simpli_core.settings import CustomFieldSettings, SimpliSettings
 from simpli_core.usage import (
     DEFAULT_PRICING,
     CostTracker,
@@ -59,6 +74,7 @@ __all__ = [
     "BaseConnector",
     "ChatMessage",
     "ConnectorError",
+    "CustomFieldSettings",
     "ExternalServiceError",
     "ForbiddenError",
     "IngestResult",
@@ -70,12 +86,18 @@ __all__ = [
     "CostTracker",
     "Customer",
     "CustomerTier",
+    "FieldCategory",
+    "FieldConfig",
+    "FieldConfigStore",
+    "FieldDescriptor",
     "FieldMapping",
     "FileConnector",
     "LLMCost",
     "Message",
     "ModelPricing",
     "NotFoundError",
+    "ObjectSchema",
+    "ObjectType",
     "Priority",
     "RateLimitedError",
     "SalesforceConnector",
@@ -90,13 +112,18 @@ __all__ = [
     "add_api_key_middleware",
     "add_request_id_middleware",
     "apply_mappings",
+    "build_record_context",
     "create_app",
     "create_ingest_router",
     "create_ops_router",
+    "create_setup_router",
     "create_webhook_router",
+    "delete_field_config",
     "get_connector",
     "list_platforms",
     "load_config",
+    "load_field_config",
+    "save_field_config",
     "setup_logging",
     "verify_signature",
 ]

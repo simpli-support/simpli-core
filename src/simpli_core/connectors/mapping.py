@@ -9,6 +9,44 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 
+class FieldCategory(StrEnum):
+    """Whether a field is a standard platform field or a custom user-defined one."""
+
+    STANDARD = "standard"
+    CUSTOM = "custom"
+
+
+class ObjectType(StrEnum):
+    """The type of object whose fields are being described."""
+
+    TICKET = "ticket"
+    ARTICLE = "article"
+
+
+class FieldDescriptor(BaseModel):
+    """Describes a single field available on a platform object."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    label: str
+    field_type: str  # "string", "number", "boolean", "datetime", "picklist", etc.
+    category: FieldCategory
+    required: bool = False
+    picklist_values: list[str] | None = None
+    description: str = ""
+
+
+class ObjectSchema(BaseModel):
+    """Schema of all available fields for a platform object type."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    object_type: ObjectType
+    platform: str
+    fields: list[FieldDescriptor]
+
+
 class FieldMapping(BaseModel):
     """Maps a source field to a target field with optional transformation."""
 
@@ -125,13 +163,18 @@ def _apply_transform(value: Any, transform: str) -> Any:
 def apply_mappings(
     records: list[dict[str, Any]],
     mappings: list[FieldMapping],
+    *,
+    preserve_unmapped: bool = False,
+    unmapped_key: str = "custom_fields",
 ) -> list[dict[str, Any]]:
     """Transform a list of raw records using field mappings.
 
     Each record is transformed by extracting source fields, applying
     transforms, and writing to target fields. Fields not covered by
-    mappings are dropped.
+    mappings are dropped unless *preserve_unmapped* is ``True``, in
+    which case they are collected into a dict under *unmapped_key*.
     """
+    mapped_sources = {m.source.split(".")[0] for m in mappings}
     results: list[dict[str, Any]] = []
     for record in records:
         mapped: dict[str, Any] = {}
@@ -140,6 +183,14 @@ def apply_mappings(
             if m.transform and value is not None:
                 value = _apply_transform(value, m.transform)
             mapped[m.target] = value
+        if preserve_unmapped:
+            unmapped = {
+                k: v
+                for k, v in record.items()
+                if k not in mapped_sources and v is not None
+            }
+            if unmapped:
+                mapped[unmapped_key] = unmapped
         results.append(mapped)
     return results
 

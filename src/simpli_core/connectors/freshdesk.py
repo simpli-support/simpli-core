@@ -5,6 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from simpli_core.connectors.base import BaseConnector
+from simpli_core.connectors.mapping import (
+    FieldCategory,
+    FieldDescriptor,
+    ObjectSchema,
+    ObjectType,
+)
 from simpli_core.connectors.registry import register
 
 
@@ -94,6 +100,48 @@ class FreshdeskConnector(BaseConnector):
         if fields:
             return self._put(f"/api/v2/tickets/{ticket_id}", json=fields)
         return {}
+
+
+    def describe_fields(
+        self,
+        object_type: str = "ticket",
+    ) -> ObjectSchema:
+        """Discover ticket fields from Freshdesk."""
+        raw_fields = self._get("/api/v2/ticket_fields")
+        if not isinstance(raw_fields, list):
+            raw_fields = raw_fields.get("ticket_fields", [])
+
+        descriptors: list[FieldDescriptor] = []
+        for field in raw_fields:
+            picklist_vals = None
+            choices = field.get("choices")
+            if choices and isinstance(choices, (list, dict)):
+                if isinstance(choices, dict):
+                    picklist_vals = list(choices.keys())
+                else:
+                    picklist_vals = [str(c) for c in choices]
+
+            descriptors.append(
+                FieldDescriptor(
+                    name=field.get("name", ""),
+                    label=field.get("label", field.get("name", "")),
+                    field_type="picklist" if picklist_vals else "string",
+                    category=(
+                        FieldCategory.STANDARD
+                        if field.get("default", False)
+                        else FieldCategory.CUSTOM
+                    ),
+                    required=field.get("required_for_agents", False),
+                    picklist_values=picklist_vals,
+                    description=field.get("description", "") or "",
+                )
+            )
+
+        return ObjectSchema(
+            object_type=ObjectType.TICKET,
+            platform="freshdesk",
+            fields=descriptors,
+        )
 
 
 register("freshdesk", FreshdeskConnector)

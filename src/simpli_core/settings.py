@@ -1,6 +1,6 @@
 """Base application settings using pydantic-settings."""
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,4 +26,29 @@ class SimpliSettings(BaseSettings):
     api_key: str = Field(
         default="",
         description="API key for authenticating requests. Empty = disabled.",
+    )
+
+
+class CustomFieldSettings(BaseModel):
+    """Mixin for custom field preservation in data ingestion.
+
+    Add to a service's ``Settings`` class to enable custom field support::
+
+        class Settings(SimpliSettings, SalesforceSettings, CustomFieldSettings):
+            ...
+
+    Fields are configured via the ``simpli-core setup`` CLI command or the
+    setup API, and persisted in ``~/.simpli/field_config.json``.
+    """
+
+    preserve_unmapped_fields: bool = Field(
+        default=False,
+        description=(
+            "When true, unmapped source fields are preserved in a "
+            "custom_fields dict during ingestion."
+        ),
+    )
+    custom_fields_in_prompts: bool = Field(
+        default=True,
+        description="Include custom field data in LLM prompt context.",
     )

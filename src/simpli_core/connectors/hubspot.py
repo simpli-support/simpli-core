@@ -5,6 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 from simpli_core.connectors.base import BaseConnector
+from simpli_core.connectors.field_config import load_field_config
+from simpli_core.connectors.mapping import (
+    FieldCategory,
+    FieldDescriptor,
+    ObjectSchema,
+    ObjectType,
+)
 from simpli_core.connectors.registry import register
 
 
@@ -34,9 +41,23 @@ class HubSpotConnector(BaseConnector):
 
         Tickets are returned with their properties flattened.
         """
+        base_properties = (
+            "subject,content,hs_pipeline_stage,hs_ticket_priority,"
+            "createdate,hs_lastmodifieddate"
+        )
+        config = load_field_config("hubspot", "ticket")
+        if config:
+            extra = ",".join(
+                f for f in config.selected_fields
+                if f not in base_properties
+            )
+            properties = f"{base_properties},{extra}" if extra else base_properties
+        else:
+            properties = base_properties
+
         params: dict[str, Any] = {
             "limit": min(limit, 100),
-            "properties": "subject,content,hs_pipeline_stage,hs_ticket_priority,createdate,hs_lastmodifieddate",
+            "properties": properties,
         }
         records = self._paginate(
             "/crm/v3/objects/tickets",
@@ -120,6 +141,46 @@ class HubSpotConnector(BaseConnector):
         if isinstance(props, dict):
             flat.update(props)
         return flat
+
+
+    def describe_fields(
+        self,
+        object_type: str = "ticket",
+    ) -> ObjectSchema:
+        """Discover ticket properties from HubSpot."""
+        data = self._get("/crm/v3/properties/tickets")
+        raw_fields = data.get("results", [])
+
+        descriptors: list[FieldDescriptor] = []
+        for field in raw_fields:
+            if field.get("hidden", False):
+                continue
+            picklist_vals = None
+            options = field.get("options") or []
+            if options:
+                picklist_vals = [o.get("value", "") for o in options]
+
+            descriptors.append(
+                FieldDescriptor(
+                    name=field.get("name", ""),
+                    label=field.get("label", field.get("name", "")),
+                    field_type="picklist" if picklist_vals else field.get("type", "string"),
+                    category=(
+                        FieldCategory.STANDARD
+                        if field.get("hubspotDefined", False)
+                        else FieldCategory.CUSTOM
+                    ),
+                    required=field.get("required", False) if not field.get("hubspotDefined") else False,
+                    picklist_values=picklist_vals,
+                    description=field.get("description", ""),
+                )
+            )
+
+        return ObjectSchema(
+            object_type=ObjectType.TICKET,
+            platform="hubspot",
+            fields=descriptors,
+        )
 
 
 register("hubspot", HubSpotConnector)

@@ -5,7 +5,18 @@ from __future__ import annotations
 from typing import Any
 
 from simpli_core.connectors.base import BaseConnector
+from simpli_core.connectors.mapping import (
+    FieldCategory,
+    FieldDescriptor,
+    ObjectSchema,
+    ObjectType,
+)
 from simpli_core.connectors.registry import register
+
+_ZENDESK_STANDARD_TYPES = {
+    "subject", "description", "status", "priority", "group",
+    "assignee", "tickettype", "organization",
+}
 
 
 class ZendeskConnector(BaseConnector):
@@ -104,6 +115,48 @@ class ZendeskConnector(BaseConnector):
                 "public": not internal,
             }
         return self._put(f"/api/v2/tickets/{ticket_id}.json", json=payload)
+
+
+    def describe_fields(
+        self,
+        object_type: str = "ticket",
+    ) -> ObjectSchema:
+        """Discover ticket fields from Zendesk."""
+        data = self._get("/api/v2/ticket_fields.json")
+        raw_fields = data.get("ticket_fields", [])
+
+        descriptors: list[FieldDescriptor] = []
+        for field in raw_fields:
+            if not field.get("active", True):
+                continue
+            ftype = field.get("type", "text")
+            is_standard = ftype in _ZENDESK_STANDARD_TYPES
+            picklist_vals = None
+            options = field.get("custom_field_options") or []
+            if options:
+                picklist_vals = [o.get("value", "") for o in options]
+
+            descriptors.append(
+                FieldDescriptor(
+                    name=str(field.get("id", "")),
+                    label=field.get("title", ""),
+                    field_type="picklist" if picklist_vals else "string",
+                    category=(
+                        FieldCategory.STANDARD
+                        if is_standard
+                        else FieldCategory.CUSTOM
+                    ),
+                    required=field.get("required", False),
+                    picklist_values=picklist_vals,
+                    description=field.get("description", ""),
+                )
+            )
+
+        return ObjectSchema(
+            object_type=ObjectType.TICKET,
+            platform="zendesk",
+            fields=descriptors,
+        )
 
 
 register("zendesk", ZendeskConnector)

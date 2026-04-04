@@ -6,6 +6,13 @@ import re
 from typing import Any
 
 from simpli_core.connectors.base import BaseConnector
+from simpli_core.connectors.field_config import load_field_config
+from simpli_core.connectors.mapping import (
+    FieldCategory,
+    FieldDescriptor,
+    ObjectSchema,
+    ObjectType,
+)
 from simpli_core.connectors.registry import register
 
 
@@ -50,12 +57,26 @@ class JiraConnector(BaseConnector):
         if not jql and self.project_key:
             jql = f"project = {self.project_key} ORDER BY created DESC"
 
+        base_fields = (
+            "summary,description,status,priority,issuetype,"
+            "assignee,reporter,created,updated,comment"
+        )
+        config = load_field_config("jira", "ticket")
+        if config:
+            extra = ",".join(
+                f for f in config.selected_fields
+                if f not in base_fields
+            )
+            fields_param = f"{base_fields},{extra}" if extra else base_fields
+        else:
+            fields_param = base_fields
+
         data = self._get(
             "/rest/api/3/search",
             params={
                 "jql": jql,
                 "maxResults": min(limit, 100),
-                "fields": "summary,description,status,priority,issuetype,assignee,reporter,created,updated,comment",
+                "fields": fields_param,
             },
         )
         issues = data.get("issues", [])
@@ -178,6 +199,39 @@ class JiraConnector(BaseConnector):
 
         _extract(adf)
         return " ".join(texts)
+
+
+    def describe_fields(
+        self,
+        object_type: str = "ticket",
+    ) -> ObjectSchema:
+        """Discover issue fields from Jira."""
+        raw_fields = self._get("/rest/api/3/field")
+        if not isinstance(raw_fields, list):
+            raw_fields = raw_fields.get("values", [])
+
+        descriptors: list[FieldDescriptor] = []
+        for field in raw_fields:
+            schema = field.get("schema", {})
+            descriptors.append(
+                FieldDescriptor(
+                    name=field.get("id", ""),
+                    label=field.get("name", field.get("id", "")),
+                    field_type=schema.get("type", "string"),
+                    category=(
+                        FieldCategory.CUSTOM
+                        if field.get("custom", False)
+                        else FieldCategory.STANDARD
+                    ),
+                    required=field.get("required", False),
+                )
+            )
+
+        return ObjectSchema(
+            object_type=ObjectType.TICKET,
+            platform="jira",
+            fields=descriptors,
+        )
 
 
 register("jira", JiraConnector)

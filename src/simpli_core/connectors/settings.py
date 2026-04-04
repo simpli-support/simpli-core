@@ -9,7 +9,7 @@ class SalesforceSettings(BaseModel):
     Example::
 
         class Settings(SimpliSettings, SalesforceSettings):
-            litellm_model: str = "openai/gpt-5-mini"
+            litellm_model: str = "openrouter/google/gemini-2.5-flash-lite"
     """
 
     salesforce_instance_url: str = ""

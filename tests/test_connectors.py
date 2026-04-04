@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+import os
 
 import pytest
 
@@ -14,10 +15,15 @@ from simpli_core.connectors.mapping import (
     COMMENT_TO_MESSAGE,
     CONTACT_TO_CUSTOMER,
     KB_TO_ARTICLE,
+    FieldCategory,
+    FieldDescriptor,
     FieldMapping,
+    ObjectSchema,
+    ObjectType,
     apply_mappings,
 )
 from simpli_core.connectors.settings import SalesforceSettings
+from simpli_core.prompt_context import build_record_context
 
 
 # -- FieldMapping tests --
@@ -575,3 +581,228 @@ class TestSalesforceSettings:
         )
         assert settings.salesforce_instance_url == "https://myorg.salesforce.com"
         assert settings.salesforce_client_id == "client-123"
+
+
+# -- preserve_unmapped tests --
+
+
+class TestPreserveUnmapped:
+    def test_default_drops_unmapped(self) -> None:
+        mappings = [FieldMapping(source="Name", target="name")]
+        records = [{"Name": "Alice", "Custom__c": "value"}]
+        result = apply_mappings(records, mappings)
+        assert result == [{"name": "Alice"}]
+        assert "custom_fields" not in result[0]
+
+    def test_preserve_unmapped_collects_extra(self) -> None:
+        mappings = [FieldMapping(source="Name", target="name")]
+        records = [{"Name": "Alice", "Custom__c": "value", "SLA__c": "4h"}]
+        result = apply_mappings(records, mappings, preserve_unmapped=True)
+        assert result[0]["name"] == "Alice"
+        assert result[0]["custom_fields"] == {"Custom__c": "value", "SLA__c": "4h"}
+
+    def test_preserve_unmapped_skips_none_values(self) -> None:
+        mappings = [FieldMapping(source="Name", target="name")]
+        records = [{"Name": "Alice", "Empty": None, "Custom__c": "val"}]
+        result = apply_mappings(records, mappings, preserve_unmapped=True)
+        assert result[0]["custom_fields"] == {"Custom__c": "val"}
+
+    def test_preserve_unmapped_no_extras(self) -> None:
+        mappings = [FieldMapping(source="Name", target="name")]
+        records = [{"Name": "Alice"}]
+        result = apply_mappings(records, mappings, preserve_unmapped=True)
+        assert "custom_fields" not in result[0]
+
+    def test_preserve_unmapped_custom_key(self) -> None:
+        mappings = [FieldMapping(source="Name", target="name")]
+        records = [{"Name": "Alice", "Extra": "val"}]
+        result = apply_mappings(
+            records, mappings, preserve_unmapped=True, unmapped_key="extras"
+        )
+        assert "extras" in result[0]
+        assert result[0]["extras"] == {"Extra": "val"}
+
+    def test_preserve_unmapped_with_salesforce_mappings(self) -> None:
+        records = [
+            {
+                "CaseNumber": "001",
+                "Subject": "Help",
+                "Description": "Need help",
+                "Status": "New",
+                "Priority": "High",
+                "Origin": "Email",
+                "ContactId": "C001",
+                "CreatedDate": "2024-01-01",
+                "ClosedDate": None,
+                "OwnerId": "A001",
+                "Product_Line__c": "Enterprise",
+                "SLA_Level__c": "Gold",
+            }
+        ]
+        result = apply_mappings(
+            records, CASE_TO_TICKET, preserve_unmapped=True
+        )
+        assert result[0]["subject"] == "Help"
+        assert result[0]["custom_fields"] == {
+            "Product_Line__c": "Enterprise",
+            "SLA_Level__c": "Gold",
+        }
+
+
+# -- Schema model tests --
+
+
+class TestSchemaModels:
+    def test_field_descriptor(self) -> None:
+        fd = FieldDescriptor(
+            name="Product_Line__c",
+            label="Product Line",
+            field_type="picklist",
+            category=FieldCategory.CUSTOM,
+            picklist_values=["Enterprise", "SMB", "Startup"],
+        )
+        assert fd.name == "Product_Line__c"
+        assert fd.category == FieldCategory.CUSTOM
+        assert len(fd.picklist_values) == 3
+
+    def test_object_schema(self) -> None:
+        schema = ObjectSchema(
+            object_type=ObjectType.TICKET,
+            platform="salesforce",
+            fields=[
+                FieldDescriptor(
+                    name="Subject",
+                    label="Subject",
+                    field_type="string",
+                    category=FieldCategory.STANDARD,
+                ),
+            ],
+        )
+        assert schema.platform == "salesforce"
+        assert len(schema.fields) == 1
+
+    def test_field_category_values(self) -> None:
+        assert FieldCategory.STANDARD == "standard"
+        assert FieldCategory.CUSTOM == "custom"
+
+    def test_object_type_values(self) -> None:
+        assert ObjectType.TICKET == "ticket"
+        assert ObjectType.ARTICLE == "article"
+
+
+# -- FieldConfig persistence tests --
+
+
+class TestFieldConfig:
+    def test_load_save_roundtrip(self, tmp_path: Path) -> None:
+        from simpli_core.connectors.field_config import (
+            FieldConfig,
+            delete_field_config,
+            load_field_config,
+            save_field_config,
+        )
+
+        with patch.dict("os.environ", {"SIMPLI_CONFIG_DIR": str(tmp_path)}):
+            # Initially empty
+            assert load_field_config("salesforce") is None
+
+            # Save
+            config = FieldConfig(
+                platform="salesforce",
+                object_type="ticket",
+                selected_fields=["Product_Line__c", "SLA__c"],
+                custom_mappings=[
+                    FieldMapping(source="Product_Line__c", target="product_line"),
+                    FieldMapping(source="SLA__c", target="sla"),
+                ],
+            )
+            save_field_config(config)
+
+            # Load back
+            loaded = load_field_config("salesforce")
+            assert loaded is not None
+            assert loaded.platform == "salesforce"
+            assert len(loaded.selected_fields) == 2
+            assert len(loaded.custom_mappings) == 2
+
+            # Delete
+            assert delete_field_config("salesforce") is True
+            assert load_field_config("salesforce") is None
+            assert delete_field_config("salesforce") is False
+
+    def test_multiple_platforms(self, tmp_path: Path) -> None:
+        from simpli_core.connectors.field_config import (
+            FieldConfig,
+            load_field_config,
+            save_field_config,
+        )
+
+        with patch.dict("os.environ", {"SIMPLI_CONFIG_DIR": str(tmp_path)}):
+            save_field_config(FieldConfig(
+                platform="salesforce", selected_fields=["A__c"],
+            ))
+            save_field_config(FieldConfig(
+                platform="zendesk", selected_fields=["B"],
+            ))
+            sf = load_field_config("salesforce")
+            zd = load_field_config("zendesk")
+            assert sf is not None and sf.selected_fields == ["A__c"]
+            assert zd is not None and zd.selected_fields == ["B"]
+
+
+# -- Prompt context builder tests --
+
+
+class TestBuildRecordContext:
+    def test_basic_record(self) -> None:
+        record = {"subject": "Help needed", "description": "Can't login"}
+        result = build_record_context(record)
+        assert "Subject: Help needed" in result
+        assert "Description: Can't login" in result
+
+    def test_custom_fields_included(self) -> None:
+        record = {
+            "subject": "Help",
+            "description": "Issue",
+            "custom_fields": {
+                "Product_Line__c": "Enterprise",
+                "SLA_Level__c": "Gold",
+            },
+        }
+        result = build_record_context(record)
+        assert "Additional Context:" in result
+        assert "Product Line: Enterprise" in result
+        assert "Sla Level: Gold" in result
+
+    def test_custom_fields_excluded(self) -> None:
+        record = {
+            "subject": "Help",
+            "custom_fields": {"X": "Y"},
+        }
+        result = build_record_context(record, include_custom=False)
+        assert "Additional Context:" not in result
+
+    def test_custom_primary_fields(self) -> None:
+        record = {"title": "My Title", "body": "My Body"}
+        result = build_record_context(
+            record, primary_fields=["title", "body"]
+        )
+        assert "Title: My Title" in result
+        assert "Body: My Body" in result
+
+    def test_max_custom_fields(self) -> None:
+        custom = {f"field_{i}": f"val_{i}" for i in range(30)}
+        record = {"subject": "Test", "custom_fields": custom}
+        result = build_record_context(record, max_custom_fields=5)
+        lines = [l for l in result.split("\n") if l.startswith("  ")]
+        assert len(lines) == 5
+
+    def test_empty_record(self) -> None:
+        result = build_record_context({})
+        assert result == ""
+
+    def test_other_fields_included(self) -> None:
+        record = {"subject": "Help", "status": "open", "priority": "high"}
+        result = build_record_context(record)
+        assert "Status: open" in result
+        assert "Priority: high" in result

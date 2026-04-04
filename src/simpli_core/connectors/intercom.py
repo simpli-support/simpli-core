@@ -5,6 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from simpli_core.connectors.base import BaseConnector
+from simpli_core.connectors.mapping import (
+    FieldCategory,
+    FieldDescriptor,
+    ObjectSchema,
+    ObjectType,
+)
 from simpli_core.connectors.registry import register
 
 
@@ -96,6 +102,44 @@ class IntercomConnector(BaseConnector):
         return self._post(
             f"/conversations/{conversation_id}/reply",
             json=payload,
+        )
+
+
+    def describe_fields(
+        self,
+        object_type: str = "ticket",
+    ) -> ObjectSchema:
+        """Discover data attributes from Intercom."""
+        data = self._get(
+            "/data_attributes",
+            params={"model": "conversation"},
+        )
+        raw_fields = data.get("data_attributes", data.get("data", []))
+        if not isinstance(raw_fields, list):
+            raw_fields = []
+
+        descriptors: list[FieldDescriptor] = []
+        for field in raw_fields:
+            if field.get("archived", False):
+                continue
+            descriptors.append(
+                FieldDescriptor(
+                    name=field.get("name", ""),
+                    label=field.get("label", field.get("name", "")),
+                    field_type=field.get("data_type", "string"),
+                    category=(
+                        FieldCategory.CUSTOM
+                        if field.get("custom", False)
+                        else FieldCategory.STANDARD
+                    ),
+                    description=field.get("description", ""),
+                )
+            )
+
+        return ObjectSchema(
+            object_type=ObjectType.TICKET,
+            platform="intercom",
+            fields=descriptors,
         )
 
 

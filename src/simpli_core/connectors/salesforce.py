@@ -14,6 +14,13 @@ from simpli_core.connectors.errors import (
     ConfigurationError,
     PlatformAPIError,
 )
+from simpli_core.connectors.field_config import load_field_config
+from simpli_core.connectors.mapping import (
+    FieldCategory,
+    FieldDescriptor,
+    ObjectSchema,
+    ObjectType,
+)
 from simpli_core.connectors.registry import register
 
 logger = logging.getLogger(__name__)
@@ -167,12 +174,24 @@ class SalesforceConnector(BaseConnector):
         where: str = "",
         limit: int = 100,
     ) -> list[dict[str, Any]]:
-        """Fetch Case records."""
-        soql = (
-            "SELECT Id, CaseNumber, Subject, Description, Status, Priority, "
-            "Origin, CreatedDate, ClosedDate, ContactId, OwnerId "
-            "FROM Case"
-        )
+        """Fetch Case records.
+
+        Includes any extra fields saved via ``simpli-core setup``.
+        """
+        base_fields = [
+            "Id", "CaseNumber", "Subject", "Description", "Status",
+            "Priority", "Origin", "CreatedDate", "ClosedDate",
+            "ContactId", "OwnerId",
+        ]
+        config = load_field_config("salesforce", "ticket")
+        if config:
+            extra = [f for f in config.selected_fields if f not in base_fields]
+            all_fields = base_fields + extra
+        else:
+            all_fields = base_fields
+
+        field_list = ", ".join(all_fields)
+        soql = f"SELECT {field_list} FROM Case"
         if where:
             soql += f" WHERE {where}"
         soql += f" ORDER BY CreatedDate DESC LIMIT {limit}"
@@ -306,6 +325,80 @@ class SalesforceConnector(BaseConnector):
     ) -> list[dict[str, Any]]:
         """Fetch KB articles (alias for get_kb_articles)."""
         return self.get_kb_articles(where=where, limit=limit)
+
+    # -- Field type mapping for Salesforce describe results --
+
+    _SF_TYPE_MAP: dict[str, str] = {
+        "string": "string",
+        "textarea": "string",
+        "email": "string",
+        "url": "string",
+        "phone": "string",
+        "id": "string",
+        "reference": "string",
+        "picklist": "picklist",
+        "multipicklist": "picklist",
+        "boolean": "boolean",
+        "int": "number",
+        "double": "number",
+        "currency": "number",
+        "percent": "number",
+        "date": "datetime",
+        "datetime": "datetime",
+    }
+
+    def describe_fields(
+        self,
+        object_type: str = "ticket",
+    ) -> ObjectSchema:
+        """Discover fields on a Salesforce object.
+
+        Uses the Salesforce ``describe()`` API for Case (tickets) or
+        Knowledge__kav (articles).
+        """
+        sf_object = "Knowledge__kav" if object_type == "article" else "Case"
+        try:
+            desc = getattr(self.sf, sf_object).describe()
+        except Exception as exc:
+            raise PlatformAPIError(
+                f"Failed to describe {sf_object}: {exc}",
+                platform="salesforce",
+            ) from exc
+
+        descriptors: list[FieldDescriptor] = []
+        for field in desc.get("fields", []):
+            picklist_vals = None
+            if field.get("type") in ("picklist", "multipicklist"):
+                picklist_vals = [
+                    pv["value"] for pv in field.get("picklistValues", [])
+                    if pv.get("active")
+                ]
+
+            descriptors.append(
+                FieldDescriptor(
+                    name=field["name"],
+                    label=field.get("label", field["name"]),
+                    field_type=self._SF_TYPE_MAP.get(
+                        field.get("type", "string"), "string"
+                    ),
+                    category=(
+                        FieldCategory.CUSTOM
+                        if field.get("custom")
+                        else FieldCategory.STANDARD
+                    ),
+                    required=not field.get("nillable", True)
+                    and not field.get("defaultedOnCreate", False),
+                    picklist_values=picklist_vals,
+                    description=field.get("inlineHelpText", "") or "",
+                )
+            )
+
+        ot = ObjectType.ARTICLE if object_type == "article" else ObjectType.TICKET
+        return ObjectSchema(
+            object_type=ot,
+            platform="salesforce",
+            fields=descriptors,
+        )
 
     def close(self) -> None:
         """Close the HTTP client (inherited) and clean up."""

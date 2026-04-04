@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -63,7 +64,8 @@ class Customer(_TimestampBase):
     name: str = Field(min_length=1)
     email: EmailStr | None = None
     tier: CustomerTier | None = None
-    metadata: dict[str, str] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    custom_fields: dict[str, Any] = Field(default_factory=dict)
 
 
 class Agent(SimpliBase):
@@ -99,7 +101,8 @@ class Ticket(_TimestampBase):
     customer_id: str = Field(min_length=1)
     assignee_id: str | None = None
     tags: list[str] = Field(default_factory=list)
-    metadata: dict[str, str] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    custom_fields: dict[str, Any] = Field(default_factory=dict)
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
     )

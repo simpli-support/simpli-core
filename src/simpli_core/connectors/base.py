@@ -223,6 +223,20 @@ class BaseConnector:
         msg = f"{self.platform} connector does not support get_articles()"
         raise NotImplementedError(msg)
 
+    def describe_fields(
+        self,
+        object_type: str = "ticket",
+    ) -> dict[str, Any]:
+        """Discover available fields for a platform object type.
+
+        Returns an :class:`~simpli_core.connectors.mapping.ObjectSchema`
+        serialised as a dict. Subclasses should import and return the
+        Pydantic model directly; the base implementation raises
+        ``NotImplementedError``.
+        """
+        msg = f"{self.platform} connector does not support describe_fields()"
+        raise NotImplementedError(msg)
+
     def close(self) -> None:
         """Close the HTTP client."""
         self._client.close()
