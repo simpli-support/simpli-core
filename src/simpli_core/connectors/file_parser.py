@@ -128,7 +128,7 @@ class FileConnector:
     @staticmethod
     def _parse_excel(file: BinaryIO | Path | str) -> list[dict[str, Any]]:
         try:
-            import openpyxl
+            import openpyxl  # type: ignore[import-untyped,unused-ignore]
         except ImportError:
             msg = (
                 "Excel support requires openpyxl. "
@@ -159,7 +159,7 @@ class FileConnector:
     @staticmethod
     def _parse_parquet(file: BinaryIO | Path | str) -> list[dict[str, Any]]:
         try:
-            import pyarrow.parquet as pq  # type: ignore[import-untyped]
+            import pyarrow.parquet as pq  # type: ignore[import-untyped,unused-ignore]
         except ImportError:
             msg = (
                 "Parquet support requires pyarrow. "
