@@ -61,34 +61,21 @@ from simpli_core.usage import (
     TokenUsage,
 )
 
-# FastAPI-dependent imports are lazy to avoid requiring fastapi for
-# consumers that only need models/settings (e.g. simpli-data).
-_FASTAPI_IMPORTS = {
-    "add_api_key_middleware": ("simpli_core.auth", "add_api_key_middleware"),
-    "ChatMessage": ("simpli_core.fastapi", "ChatMessage"),
-    "add_request_id_middleware": ("simpli_core.fastapi", "add_request_id_middleware"),
-    "create_app": ("simpli_core.fastapi", "create_app"),
-    "create_ops_router": ("simpli_core.fastapi", "create_ops_router"),
-    "IngestResult": ("simpli_core.connectors.ingest", "IngestResult"),
-    "create_ingest_router": ("simpli_core.connectors.ingest", "create_ingest_router"),
-    "create_setup_router": (
-        "simpli_core.connectors.setup_router",
-        "create_setup_router",
-    ),
-    "create_webhook_router": ("simpli_core.webhooks", "create_webhook_router"),
-    "verify_signature": ("simpli_core.webhooks", "verify_signature"),
-}
-
-
-def __getattr__(name: str) -> object:
-    if name in _FASTAPI_IMPORTS:
-        module_path, attr_name = _FASTAPI_IMPORTS[name]
-        import importlib
-
-        module = importlib.import_module(module_path)
-        return getattr(module, attr_name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
+# FastAPI-dependent imports — optional so consumers that only need
+# models/settings (e.g. simpli-data) don't require fastapi.
+try:
+    from simpli_core.auth import add_api_key_middleware
+    from simpli_core.connectors.ingest import IngestResult, create_ingest_router
+    from simpli_core.connectors.setup_router import create_setup_router
+    from simpli_core.fastapi import (
+        ChatMessage,
+        add_request_id_middleware,
+        create_app,
+        create_ops_router,
+    )
+    from simpli_core.webhooks import create_webhook_router, verify_signature
+except ImportError:  # pragma: no cover
+    pass
 
 __all__ = [
     "DEFAULT_PRICING",
