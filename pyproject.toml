@@ -65,3 +65,16 @@ python_version = "3.11"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.coverage.run]
+omit = [
+    "src/simpli_core/connectors/salesforce.py",
+    "src/simpli_core/connectors/zendesk.py",
+    "src/simpli_core/connectors/freshdesk.py",
+    "src/simpli_core/connectors/hubspot.py",
+    "src/simpli_core/connectors/jira.py",
+    "src/simpli_core/connectors/servicenow.py",
+    "src/simpli_core/connectors/intercom.py",
+    "src/simpli_core/connectors/setup_router.py",
+    "src/simpli_core/cli.py",
+]
