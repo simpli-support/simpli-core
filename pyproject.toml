@@ -41,6 +41,8 @@ dev = [
     "mypy>=1.13",
     "types-pyyaml>=6.0",
     "types-redis>=4.6",
+    "fastapi>=0.115",
+    "simple-salesforce>=1.12",
 ]
 
 [project.scripts]
