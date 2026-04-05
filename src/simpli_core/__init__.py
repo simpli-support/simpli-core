@@ -38,6 +38,7 @@ from simpli_core.errors import (
     SimpliError,
     ValidationError,
 )
+from simpli_core.llm import parse_llm_json, safe_float, safe_int
 from simpli_core.logging import setup_logging
 from simpli_core.models import (
     Agent,
@@ -51,7 +52,6 @@ from simpli_core.models import (
     Ticket,
     TicketStatus,
 )
-from simpli_core.llm import parse_llm_json, safe_float, safe_int
 from simpli_core.prompt_context import build_record_context
 from simpli_core.service_client import ServiceClient, ServiceRegistry, StepResult
 from simpli_core.settings import CustomFieldSettings, SimpliSettings
@@ -64,7 +64,7 @@ from simpli_core.usage import (
 )
 
 # Supabase client — optional so consumers without supabase-py still work.
-try:
+try:  # noqa: SIM105
     from simpli_core.supabase import get_supabase_client, supabase_from_settings
 except ImportError:  # pragma: no cover
     pass
@@ -113,7 +113,6 @@ __all__ = [
     "ModelPricing",
     "NotFoundError",
     "ObjectSchema",
-    "parse_llm_json",
     "ObjectType",
     "Priority",
     "RateLimitedError",
@@ -144,6 +143,7 @@ __all__ = [
     "list_platforms",
     "load_config",
     "load_field_config",
+    "parse_llm_json",
     "safe_float",
     "safe_int",
     "save_field_config",

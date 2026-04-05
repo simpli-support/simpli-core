@@ -37,7 +37,10 @@ class SimpliSettings(BaseSettings):
     )
     llm_mock_mode: bool = Field(
         default=False,
-        description="When true, services return deterministic mock responses instead of calling LLM APIs.",
+        description=(
+            "When true, services return deterministic mock"
+            " responses instead of calling LLM APIs."
+        ),
     )
 
 
