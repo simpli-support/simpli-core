@@ -155,9 +155,7 @@ class ServiceClient:
 
     # ── Convenience methods for common service calls ──
 
-    async def triage(
-        self, subject: str, body: str, **kwargs: Any
-    ) -> StepResult:
+    async def triage(self, subject: str, body: str, **kwargs: Any) -> StepResult:
         """Classify a ticket via simpli-triage."""
         return await self.call(
             "triage",
@@ -167,15 +165,11 @@ class ServiceClient:
 
     async def redact(self, text: str, **kwargs: Any) -> StepResult:
         """Redact PII via simpli-redact."""
-        return await self.call(
-            "redact", "/api/v1/redact", {"text": text, **kwargs}
-        )
+        return await self.call("redact", "/api/v1/redact", {"text": text, **kwargs})
 
     async def search_kb(self, query: str, top_k: int = 5) -> StepResult:
         """Search knowledge base via simpli-kb."""
-        return await self.call(
-            "kb", "/api/v1/search", {"query": query, "top_k": top_k}
-        )
+        return await self.call("kb", "/api/v1/search", {"query": query, "top_k": top_k})
 
     async def draft_reply(
         self,
