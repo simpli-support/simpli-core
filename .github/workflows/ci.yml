@@ -44,5 +44,3 @@ jobs:
           cache: pip
       - run: pip install -e ".[dev]"
       - run: pytest --cov=simpli_core --cov-report=term-missing
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
