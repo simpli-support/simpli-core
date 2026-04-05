@@ -51,7 +51,9 @@ from simpli_core.models import (
     Ticket,
     TicketStatus,
 )
+from simpli_core.llm import parse_llm_json, safe_float, safe_int
 from simpli_core.prompt_context import build_record_context
+from simpli_core.service_client import ServiceClient, ServiceRegistry, StepResult
 from simpli_core.settings import CustomFieldSettings, SimpliSettings
 from simpli_core.usage import (
     DEFAULT_PRICING,
@@ -60,6 +62,12 @@ from simpli_core.usage import (
     ModelPricing,
     TokenUsage,
 )
+
+# Supabase client — optional so consumers without supabase-py still work.
+try:
+    from simpli_core.supabase import get_supabase_client, supabase_from_settings
+except ImportError:  # pragma: no cover
+    pass
 
 # FastAPI-dependent imports — optional so consumers that only need
 # models/settings (e.g. simpli-data) don't require fastapi.
@@ -105,14 +113,18 @@ __all__ = [
     "ModelPricing",
     "NotFoundError",
     "ObjectSchema",
+    "parse_llm_json",
     "ObjectType",
     "Priority",
     "RateLimitedError",
     "SalesforceConnector",
     "SalesforceSettings",
+    "ServiceClient",
+    "ServiceRegistry",
     "SimpliConfig",
     "SimpliError",
     "SimpliSettings",
+    "StepResult",
     "Ticket",
     "TicketStatus",
     "TokenUsage",
@@ -128,10 +140,14 @@ __all__ = [
     "create_webhook_router",
     "delete_field_config",
     "get_connector",
+    "get_supabase_client",
     "list_platforms",
     "load_config",
     "load_field_config",
+    "safe_float",
+    "safe_int",
     "save_field_config",
     "setup_logging",
+    "supabase_from_settings",
     "verify_signature",
 ]

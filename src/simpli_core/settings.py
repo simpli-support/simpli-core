@@ -27,6 +27,18 @@ class SimpliSettings(BaseSettings):
         default="",
         description="API key for authenticating requests. Empty = disabled.",
     )
+    supabase_url: str = Field(
+        default="",
+        description="Supabase project URL for persistent storage.",
+    )
+    supabase_key: str = Field(
+        default="",
+        description="Supabase service-role key for server-side access.",
+    )
+    llm_mock_mode: bool = Field(
+        default=False,
+        description="When true, services return deterministic mock responses instead of calling LLM APIs.",
+    )
 
 
 class CustomFieldSettings(BaseModel):
